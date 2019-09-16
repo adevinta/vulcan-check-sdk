@@ -7,8 +7,8 @@ import (
 
 	"net/url"
 
-	"github.com/go-resty/resty"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/resty.v1"
 )
 
 const (
