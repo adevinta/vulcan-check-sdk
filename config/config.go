@@ -49,7 +49,7 @@ type CheckConfig struct {
 // LogConfig defines configuration params for logging.
 type LogConfig struct {
 	LogFmt   string `json:"log_fmt" toml:"LogFmt"`
-	LogLevel string `json:"log_level toml:"LogLevel`
+	LogLevel string `json:"log_level toml:"LogLevel"`
 }
 
 // Config holds all values regarding configuration.
