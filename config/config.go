@@ -37,28 +37,28 @@ const (
 	confFilePath = "local.toml"
 )
 
-// CheckConfig stores config information needed by a check
+// CheckConfig stores config information needed by a check.
 type CheckConfig struct {
-	Target           string
-	Opts             string
-	CheckID          string
-	CheckTypeName    string
-	CheckTypeVersion string
+	Target           string `toml:"Target"`
+	Opts             string `toml:"Opts"`
+	CheckID          string `toml:"CheckID"`
+	CheckTypeName    string `toml:"CheckTypeName"`
+	CheckTypeVersion string `toml:"CheckTypeVersion"`
 }
 
-// LogConfig defines configuration params for logging
+// LogConfig defines configuration params for logging.
 type LogConfig struct {
-	LogFmt   string `json:"log_fmt"`
-	LogLevel string `json:"log_level"`
+	LogFmt   string `json:"log_fmt" toml:"LogFmt"`
+	LogLevel string `json:"log_level toml:"LogLevel`
 }
 
-// Config holds all values regarding configuration
+// Config holds all values regarding configuration.
 type Config struct {
-	Check           CheckConfig `toml:"Check"`
-	Log             LogConfig   `toml:"Log"`
-	CommMode        string
+	Check           CheckConfig           `toml:"Check"`
+	Log             LogConfig             `toml:"Log"`
+	CommMode        string                `toml:"CommMode"`
 	Push            rest.RestPusherConfig `toml:"Push"`
-	AllowPrivateIPs *bool
+	AllowPrivateIPs *bool                 `toml:"AllowPrivateIps"`
 }
 
 type optionsLogConfig struct {
@@ -161,7 +161,7 @@ func overrideConfigCheckEnvVars(c *Config) {
 	}
 }
 
-// LoadConfigFromFile loads configuration file from a path
+// LoadConfigFromFile loads configuration file from a path.
 func LoadConfigFromFile(filePath string) (*Config, error) {
 	c := &Config{}
 	configData, err := ioutil.ReadFile(filePath) //nolint

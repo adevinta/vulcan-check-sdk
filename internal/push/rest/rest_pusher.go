@@ -3,9 +3,8 @@ package rest
 import (
 	"fmt"
 	"net/http"
-	"sync"
-
 	"net/url"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/resty.v1"
@@ -20,8 +19,8 @@ const (
 
 // RestPusherConfig holds the configuration needed by a RestPusher to send push notifications to the agent
 type RestPusherConfig struct {
-	AgentAddr string
-	BufferLen int
+	AgentAddr string `toml:"AgentEndpoint"`
+	BufferLen int    `toml:"BufferLen"`
 }
 
 // RestPusher communicate state changes to agent by performing http calls
