@@ -40,7 +40,7 @@ const (
 // CheckConfig stores config information needed by a check.
 type CheckConfig struct {
 	Target           string `toml:"Target"`
-	Opts             string `toml:"Opts"`
+	Opts             string `toml:"Options"`
 	CheckID          string `toml:"CheckID"`
 	CheckTypeName    string `toml:"CheckTypeName"`
 	CheckTypeVersion string `toml:"CheckTypeVersion"`
