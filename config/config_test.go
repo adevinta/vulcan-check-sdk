@@ -7,9 +7,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/kr/pretty"
-
 	"github.com/adevinta/vulcan-check-sdk/internal/push/rest"
+	"github.com/kr/pretty"
 )
 
 type overrideTest struct {
@@ -157,4 +156,53 @@ func setEnvVars(envVars map[string]string) error {
 		}
 	}
 	return nil
+}
+
+func TestLoadConfigFromFile(t *testing.T) {
+	type args struct {
+		filePath string
+	}
+	tests := []struct {
+		name     string
+		filepath string
+		want     *Config
+		wantErr  bool
+	}{
+		{
+			name:     "LoadsConfigFromFileProperly",
+			filepath: "testdata/LocalExample.toml",
+			want: &Config{
+				AllowPrivateIPs: new(bool),
+				CommMode:        "push",
+				Check: CheckConfig{
+					CheckID:          "id",
+					Opts:             "{\"policy\":21}",
+					Target:           "localhost:3000",
+					CheckTypeName:    "typeName",
+					CheckTypeVersion: "2",
+				},
+
+				Push: rest.RestPusherConfig{
+					AgentAddr: "http://agent:8080",
+					BufferLen: 10,
+				},
+				Log: LogConfig{
+					LogFmt:   "text",
+					LogLevel: "info",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := LoadConfigFromFile(tt.filepath)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("LoadConfigFromFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Error in test %s. \nWant: %s Got: %s.\n diffs %+v", tt.name, pretty.Sprint(tt.want), pretty.Sprint(got), pretty.Diff(tt.want, got))
+			}
+		})
+	}
 }

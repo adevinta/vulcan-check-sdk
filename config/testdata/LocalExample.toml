@@ -1,0 +1,17 @@
+CommMode = "push"
+AllowPrivateIPs = false
+
+[Push]
+AgentEndpoint = "http://agent:8080"
+BufferLen = 10
+
+[Check]
+Target = "localhost:3000"
+Options = "{\"policy\":21}"
+CheckId = "id"
+CheckTypeName = "typeName"
+CheckTypeVersion = "2"
+
+[Log]
+LogFmt = "text"
+LogLevel = "info"
