@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
+	types "github.com/adevinta/vulcan-types"
 	"github.com/miekg/dns"
 )
 
@@ -70,150 +70,6 @@ func init() {
 	}
 }
 
-// Target represents a target received by a check. d
-type Target struct {
-	Value      string
-	hostname   *bool
-	domainName *bool
-}
-
-// IsHostname returns true if a target is not an IP but can be resolved to an IP.
-func (t Target) IsHostname() (bool, error) {
-	if t.hostname != nil {
-		return *t.hostname, nil
-	}
-	// If the target is an IP can not be a hostname
-	if t.IsIP() {
-		is := false
-		t.hostname = &is
-		return *t.hostname, nil
-	}
-
-	r, err := net.LookupIP(t.Value)
-	if err != nil {
-		// We want to differentiate the error: errNoSuchHost = errors.New("no such host")
-		// defined in the package net but, as is not exported, we need to fallback to
-		// compare the string description of the error. This not a good practice but it's the
-		// only thing we can do by now.
-		if strings.Contains(err.Error(), noSuchHostErrorToken) {
-			return false, nil
-		}
-		return false, err
-	}
-	is := len(r) > 0
-	t.hostname = &is
-	return *t.hostname, nil
-}
-
-// IsIP returns true if current value of the target is an IP.
-func (t Target) IsIP() bool {
-	return net.ParseIP(t.Value) != nil
-}
-
-// IsCIDR returns true if current value of the target is an CIDR.
-func (t Target) IsCIDR() bool {
-	_, _, err := net.ParseCIDR(t.Value)
-	return err == nil
-}
-
-// IsURL returns true if current value of the target is an URL.
-func (t Target) IsURL() bool {
-	_, err := url.ParseRequestURI(t.Value)
-	return err == nil
-}
-
-// IsAWSAccount returns true if current value of the target is an AWS account.
-func (t Target) IsAWSAccount() bool {
-	_, err := arn.Parse(t.Value)
-	return err == nil
-}
-
-// IsDockerImage returns true if current value of the target is a Docker image.
-// Approach:
-// * split identifier on first "/"
-// * verify that first element contains a "." (registry domain)
-// * split second element by ":"
-// * verify that it has two elements (image and tag)
-func (t Target) IsDockerImage() bool {
-	slashSplit := strings.SplitAfterN(t.Value, "/", 2)
-	if len(slashSplit) > 1 {
-		if strings.Contains(slashSplit[0], ".") {
-			targetSplit := strings.Split(slashSplit[1], ":")
-			if len(targetSplit) == 2 {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// IsDomainName returns true if a query to a domain server returns a SOA record for the target.
-func (t Target) IsDomainName() (bool, error) {
-	if t.domainName != nil {
-		return *t.domainName, nil
-	}
-
-	// If the target is an IP can not be a DomainName.
-	if t.IsIP() {
-		return false, nil
-	}
-
-	is, err := IsDomainName(t.Value)
-	if err != nil {
-		return false, err
-	}
-	t.domainName = &is
-	return *t.domainName, nil
-}
-
-// IsDomainName returns true if a query to a domain server returns a SOA record for the
-// asset value.
-func IsDomainName(asset string) (bool, error) {
-	return hasSOARecord(asset)
-}
-
-func hasSOARecord(address string) (bool, error) {
-	var err error
-	// Read the local dns server config only the first time.
-	if dnsConf == nil {
-		dnsConf, err = dns.ClientConfigFromFile(dnsConfFilePath)
-		if err != nil {
-			return false, err
-		}
-	}
-	m := &dns.Msg{}
-	address = address + "."
-	m.SetQuestion(address, dns.TypeSOA)
-	c := dns.Client{}
-	var r *dns.Msg
-	// Try to get an answer using local configured dns servers.
-	for _, srv := range dnsConf.Servers {
-		r = nil
-		r, _, err = c.Exchange(m, fmt.Sprintf("%s:%s", srv, dnsConf.Port))
-		if err != nil {
-			return false, err
-		}
-
-		if r.Rcode == dns.RcodeSuccess && r != nil {
-			break
-		}
-	}
-	if r == nil {
-		return false, ErrFailedToGetDNSAnswer
-	}
-	return soaHeaderForName(r, address), nil
-}
-
-func soaHeaderForName(r *dns.Msg, name string) bool {
-	for _, a := range r.Answer {
-		h := a.Header()
-		if h.Name == name && h.Rrtype == dns.TypeSOA {
-			return true
-		}
-	}
-	return false
-}
-
 // IsScannable tells you whether an asset can be scanned or not,
 // based in its type and value.
 // The goal it's to prevent scanning hosts that are not public.
@@ -223,16 +79,14 @@ func soaHeaderForName(r *dns.Msg, name string) bool {
 // resolves to a private IP. In that case the domain won't be scanned
 // while it should.
 func IsScannable(asset string) bool {
-	t := Target{Value: asset}
-
-	if t.IsIP() || t.IsCIDR() {
-		log.Printf("%s is IP or CIDR", t.Value)
-		ok, _ := isAllowed(t.Value) // nolint
+	if types.IsIP(asset) || types.IsCIDR(asset) {
+		log.Printf("%s is IP or CIDR", asset)
+		ok, _ := isAllowed(asset) // nolint
 		return ok
 	}
 
-	if t.IsURL() {
-		u, _ := url.ParseRequestURI(t.Value) // nolint
+	if types.IsURL(asset) {
+		u, _ := url.ParseRequestURI(asset) // nolint
 		asset = u.Hostname()
 	}
 

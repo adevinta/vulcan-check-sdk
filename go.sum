@@ -2,9 +2,13 @@ github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff h1:ZazuZSOfV8oo70SWdjLQi+In4GSmJCA2rwsliyz9KNs=
 github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff/go.mod h1:GtAon6TymHFTOPwRdR7SHun/TSM1kyPMQYXxGLTR8eQ=
+github.com/adevinta/vulcan-types v0.0.0-20190816125304-ee0624e808ce h1:n8FlT5+uU4PhHcgG/t4SEf4HXaCJxtSatkMJfmivYXs=
+github.com/adevinta/vulcan-types v0.0.0-20190816125304-ee0624e808ce/go.mod h1:rgJd0/voWkSWBl53+RlSO+lZjofRgbGV7YZROEMPX7o=
 github.com/aws/aws-sdk-go v1.25.43 h1:R5YqHQFIulYVfgRySz9hvBRTWBjudISa+r0C8XQ1ufg=
 github.com/aws/aws-sdk-go v1.25.43/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/docker/distribution v2.7.1+incompatible h1:a5mlkVzth6W5A4fOsS3D2EO5BUmsJpcB+cRlLU7cSug=
+github.com/docker/distribution v2.7.1+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
 github.com/google/go-cmp v0.3.1 h1:Xye71clBPdm5HgqGwUkwhbynsUJZhDbS20FvLhQ2izg=
 github.com/google/go-cmp v0.3.1/go.mod h1:8QqcDgzrUqlUb/G2PQTWiueGozuR1884gddMywk6iLU=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
@@ -19,6 +23,8 @@ github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee h1:kente5nM
 github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee/go.mod h1:7Em1Lxm3DFdLvXWUZ6bQ/xIbGlxFy7jl07bziQMZ/kU=
 github.com/miekg/dns v1.1.22 h1:Jm64b3bO9kP43ddLjL2EY3Io6bmy1qGb9Xxz6TqS6rc=
 github.com/miekg/dns v1.1.22/go.mod h1:bPDLeHnStXmXAq1m/Ch/hvfNHr14JKNPMBo3VZKjuso=
+github.com/opencontainers/go-digest v1.0.0-rc1 h1:WzifXhOVOEOuFYOJAW6aQqW0TooG2iki3E3Ii+WN7gQ=
+github.com/opencontainers/go-digest v1.0.0-rc1/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/sirupsen/logrus v1.4.2 h1:SPIRibHv4MatM3XXNO2BJeFLZwZ2LvZgfQ5+UNI2im4=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
