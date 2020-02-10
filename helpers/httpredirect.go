@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"crypto/tls"
 	"net/http"
 	"strings"
 )
@@ -13,7 +14,12 @@ const (
 // walkHTTPRedirects sends a request to the given url, follows up to 10 redirects
 // and returns the hostname of the last one.
 func walkHTTPRedirects(url string) (string, error) {
-	client := http.DefaultClient
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{
+		Transport: tr,
+	}
 	resp, err := client.Get(url)
 	if err != nil {
 		return "", err
