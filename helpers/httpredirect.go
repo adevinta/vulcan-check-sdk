@@ -11,15 +11,19 @@ const (
 	OKTADomain = "okta.com"
 )
 
-// walkHTTPRedirects sends a request to the given url, follows up to 10 redirects
-// and returns the hostname of the last one.
-func walkHTTPRedirects(url string) (string, error) {
+var client *http.Client
+
+func init() {
+	client = http.DefaultClient
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := &http.Client{
-		Transport: tr,
-	}
+	client.Transport = tr
+}
+
+// walkHTTPRedirects sends a request to the given url, follows up to 10 redirects
+// and returns the hostname of the last one.
+func walkHTTPRedirects(url string) (string, error) {
 	resp, err := client.Get(url)
 	if err != nil {
 		return "", err

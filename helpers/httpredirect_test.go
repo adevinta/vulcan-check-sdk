@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 		DualStack: true,
 	}
 
-	http.DefaultTransport.(*http.Transport).DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+	client.Transport.(*http.Transport).DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		_, port, err := net.SplitHostPort(addr)
 		if err != nil {
 			return nil, err
@@ -70,12 +70,12 @@ func TestIsRedirectingTo(t *testing.T) {
 		{
 			name: "DetectsRedirectsToHostname",
 			redirects: map[string]string{
-				"first.com":  "second.com",
-				"second.com": "test.okta.com",
+				"test.example.com": "second.com",
+				"second.com":       "test.okta.com",
 			},
 			args: args{
 				domain: OKTADomain,
-				addr:   "http://first.com",
+				addr:   "http://test.example.com",
 			},
 			want:         true,
 			wantFinalLoc: "test.okta.com",
@@ -85,10 +85,10 @@ func TestIsRedirectingTo(t *testing.T) {
 			redirects: map[string]string{},
 			args: args{
 				domain: OKTADomain,
-				addr:   "http://first.com",
+				addr:   "http://test.example.com",
 			},
 			want:         false,
-			wantFinalLoc: "first.com",
+			wantFinalLoc: "test.example.com",
 		},
 	}
 	for _, tt := range tests {
