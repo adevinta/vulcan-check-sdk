@@ -205,6 +205,10 @@ func newCheckWithTestAgent(name string, c Checker, logger *log.Entry, conf *conf
 		// Set a default checkID, this is needed for the test agent.
 		conf.Check.CheckID = "testCheckID"
 	}
+	// Set the Required env vars from the local.toml file.
+	for n, v := range conf.RequiredVars {
+		os.Setenv(n, v)
+	}
 	r := tools.NewReporter(conf.Check.CheckID)
 	conf.Push.AgentAddr = r.URL
 	logger.WithField("URL", r.URL).Warn("Building test agent listening on URL")
