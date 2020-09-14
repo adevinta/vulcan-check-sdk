@@ -2,8 +2,6 @@ github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff h1:ZazuZSOfV8oo70SWdjLQi+In4GSmJCA2rwsliyz9KNs=
 github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff/go.mod h1:GtAon6TymHFTOPwRdR7SHun/TSM1kyPMQYXxGLTR8eQ=
-github.com/adevinta/vulcan-types v0.0.0-20191203104525-777513dd9ac1 h1:BJbkbMOhQdUxp9CD2kyitvedHXzVoVc6BXrchG8XEvU=
-github.com/adevinta/vulcan-types v0.0.0-20191203104525-777513dd9ac1/go.mod h1:gflQ+QgTgSGHMJp+kUnogHadjASIDcvCTwH1v/fqT3U=
 github.com/adevinta/vulcan-types v0.0.0-20191204142703-7bdca15915ca h1:Cp5Y1tHSwf7JLeMzSDuSmqAEsWx2aHPDoszERMKspQQ=
 github.com/adevinta/vulcan-types v0.0.0-20191204142703-7bdca15915ca/go.mod h1:gflQ+QgTgSGHMJp+kUnogHadjASIDcvCTwH1v/fqT3U=
 github.com/aws/aws-sdk-go v1.25.43 h1:R5YqHQFIulYVfgRySz9hvBRTWBjudISa+r0C8XQ1ufg=
