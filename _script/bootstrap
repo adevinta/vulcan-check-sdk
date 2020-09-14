@@ -4,4 +4,5 @@ set -e
 
 gem install licensed
 
+sudo apt-get update
 sudo apt-get install -y nmap
