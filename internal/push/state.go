@@ -1,16 +1,10 @@
 package push
 
 import (
-	"errors"
 	"time"
 
 	"github.com/adevinta/vulcan-check-sdk/agent"
 	log "github.com/sirupsen/logrus"
-)
-
-var (
-	// ErrAssetUnreachable indicates that the asset to be scanned is not reachable.
-	ErrAssetUnreachable = errors.New("Asset is Unreachable")
 )
 
 // StatePusher defines the shape a pusher communications component must satisfy in order to be used

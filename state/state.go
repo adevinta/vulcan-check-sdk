@@ -1,7 +1,14 @@
 package state
 
 import (
-	"github.com/adevinta/vulcan-report"
+	"errors"
+
+	report "github.com/adevinta/vulcan-report"
+)
+
+var (
+	// ErrAssetUnreachable indicates that the asset to be scanned is not reachable.
+	ErrAssetUnreachable = errors.New("Asset is Unreachable")
 )
 
 // State defines the fields and function a check must use to generare a result
