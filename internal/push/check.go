@@ -2,17 +2,18 @@ package push
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/adevinta/vulcan-check-sdk/agent"
 	"github.com/adevinta/vulcan-check-sdk/config"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/internal/logging"
 	"github.com/adevinta/vulcan-check-sdk/internal/push/rest"
 	"github.com/adevinta/vulcan-check-sdk/state"
+	log "github.com/sirupsen/logrus"
 )
 
 // API defines the shape the api, that basically ony listens for events to abort the check,
@@ -105,9 +106,12 @@ func (c *Check) executeChecker() {
 	elapsedTime := time.Since(startTime)
 	// If an error has been returned, we set the correct status.
 	if err != nil {
-		if err == context.Canceled {
+		if errors.Is(err, context.Canceled) {
 			log.Info("Check aborted")
 			c.checkState.SetStatusAborted()
+		} else if errors.Is(err, ErrAssetUnreachable) {
+			log.Info("Check asset is unreachable")
+			c.checkState.SetStatusUnreachable()
 		} else {
 			c.Logger.WithError(err).Error("Error running check")
 			c.checkState.SetStatusFailed(err)
