@@ -109,7 +109,7 @@ func (c *Check) executeChecker() {
 		if errors.Is(err, context.Canceled) {
 			log.Info("Check aborted")
 			c.checkState.SetStatusAborted()
-		} else if errors.Is(err, ErrAssetUnreachable) {
+		} else if errors.Is(err, state.ErrAssetUnreachable) {
 			log.Info("Check asset is unreachable")
 			c.checkState.SetStatusUnreachable()
 		} else {
