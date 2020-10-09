@@ -111,7 +111,7 @@ func (c *Check) executeChecker() {
 			c.checkState.SetStatusAborted()
 		} else if errors.Is(err, state.ErrAssetUnreachable) {
 			log.Info("Check asset is unreachable")
-			c.checkState.SetStatusUnreachable()
+			c.checkState.SetStatusInconclusive()
 		} else {
 			c.Logger.WithError(err).Error("Error running check")
 			c.checkState.SetStatusFailed(err)

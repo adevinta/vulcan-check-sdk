@@ -89,12 +89,12 @@ func (p *State) SetStatusFailed(err error) {
 	p.pusher.UpdateState(p.state)
 }
 
-// SetStatusUnreachable sets the state of the current check to Unreachable and the progress to 1.0
+// SetStatusInconclusive sets the state of the current check to Inconclusive and the progress to 1.0
 // This method sends a notification to the agent.
-func (p *State) SetStatusUnreachable() {
-	p.state.Status = agent.StatusUnreachable
+func (p *State) SetStatusInconclusive() {
+	p.state.Status = agent.StatusInconclusive
 	p.state.Progress = 1.0
-	p.state.Report.Status = agent.StatusUnreachable
+	p.state.Report.Status = agent.StatusInconclusive
 	p.pusher.UpdateState(p.state)
 }
 

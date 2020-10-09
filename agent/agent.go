@@ -16,8 +16,9 @@ const (
 	StatusAborted = "ABORTED"
 	// StatusFailed represents the state for a check when has failed it's execution
 	StatusFailed = "FAILED"
-	// StatusUnreachable represents the state for a check when scanned asset was not reachable.
-	StatusUnreachable = "UNREACHABLE"
+	// StatusInconclusive represents the state for a check when scan could not be performed correctly.
+	// E.g.: Asset was unreachable.
+	StatusInconclusive = "INCONCLUSIVE"
 )
 
 // State holds all the data that must be sent to the agent to communicate check status and report.
