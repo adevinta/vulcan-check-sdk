@@ -16,7 +16,7 @@ const (
 	StatusAborted = "ABORTED"
 	// StatusFailed represents the state for a check when has failed it's execution
 	StatusFailed = "FAILED"
-	// StatusUnreachable reporesents the state for a check when asset was not reachable.
+	// StatusUnreachable represents the state for a check when scanned asset was not reachable.
 	StatusUnreachable = "UNREACHABLE"
 )
 
