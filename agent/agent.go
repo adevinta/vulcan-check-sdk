@@ -16,7 +16,7 @@ const (
 	StatusAborted = "ABORTED"
 	// StatusFailed represents the state for a check when has failed it's execution
 	StatusFailed = "FAILED"
-	// StatusInconclusive represents the state for a check when scan could not be performed correctly.
+	// StatusInconclusive represents the state for a check when it could not be executed.
 	// E.g.: Asset was unreachable.
 	StatusInconclusive = "INCONCLUSIVE"
 )
