@@ -17,6 +17,7 @@ const (
 	loggerFormatterEnv = "VULCAN_CHECK_FMT"
 
 	checkTargetEnv      = "VULCAN_CHECK_TARGET"
+	checkTargetTypeEnv  = "VULCAN_CHECK_TARGET_TYPE"
 	checkOptionsEnv     = "VULCAN_CHECK_OPTIONS"
 	checkIDEnv          = "VULCAN_CHECK_ID"
 	checkTypeNameEnv    = "VULCAN_CHECKTYPE_NAME"
@@ -40,6 +41,7 @@ const (
 // CheckConfig stores config information needed by a check.
 type CheckConfig struct {
 	Target           string `toml:"Target"`
+	TargetType       string `toml:"TargetType"`
 	Opts             string `toml:"Options"`
 	CheckID          string `toml:"CheckID"`
 	CheckTypeName    string `toml:"CheckTypeName"`
@@ -147,6 +149,10 @@ func overrideConfigCheckEnvVars(c *Config) {
 	target := os.Getenv(checkTargetEnv)
 	if target != "" {
 		c.Check.Target = target
+	}
+	targetType := os.Getenv(checkTargetTypeEnv)
+	if targetType != "" {
+		c.Check.TargetType = targetType
 	}
 	checkID := os.Getenv(checkIDEnv)
 	if checkID != "" {

@@ -8,6 +8,7 @@ BufferLen = 10
 
 [Check]
 Target  = "localhost:3000"
+TargetType = "Hostname"
 Options = "{}"
 CheckID ="id"
 CheckTypeName="typeName"

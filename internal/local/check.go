@@ -35,7 +35,7 @@ func (c *Check) RunAndServe() {
 		ProgressReporter: astate.ProgressReporterHandler(c.formatter.progress),
 	}
 	go func() {
-		c.done <- c.checker.Run(c.ctx, c.config.Check.Target, c.config.Check.Opts, runtimeState)
+		c.done <- c.checker.Run(c.ctx, c.config.Check.Target, c.config.Check.TargetType, c.config.Check.Opts, runtimeState)
 	}()
 	var err error
 LOOP:
@@ -48,7 +48,7 @@ LOOP:
 			break LOOP
 		}
 	}
-	c.checker.CleanUp(context.Background(), c.config.Check.Target, c.config.Check.Opts)
+	c.checker.CleanUp(context.Background(), c.config.Check.Target, c.config.Check.TargetType, c.config.Check.Opts)
 	c.formatter.result(err, runtimeState.ResultData)
 	if err != nil {
 		os.Exit(0)
@@ -98,8 +98,8 @@ type State struct {
 
 // Checker defines the shape a checker must have in order to be executed as vulcan-check.
 type Checker interface {
-	Run(ctx context.Context, target string, opts string, state astate.State) error
-	CleanUp(ctx context.Context, target string, opts string)
+	Run(ctx context.Context, target, targetType, opts string, state astate.State) error
+	CleanUp(ctx context.Context, target, targetType, opts string)
 }
 
 type resultFormatter interface {
