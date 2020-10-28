@@ -1,20 +1,41 @@
 package helpers
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"io/ioutil"
 	"net"
+	"net/http"
 	"net/url"
+	"os"
 	"strings"
+	"time"
 
-	types "github.com/adevinta/vulcan-types"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	docker "github.com/docker/docker/client"
 	"github.com/miekg/dns"
+	git "gopkg.in/src-d/go-git.v4"
+	gitauth "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
+
+	dockerutils "github.com/adevinta/dockerutils"
 )
 
 const (
 	dnsConfFilePath      = "/etc/resolv.conf"
 	noSuchHostErrorToken = "no such host"
+
+	// Supported types.
+	ipType        = "IP"
+	ipRangeType   = "IPRange"
+	domainType    = "DomainName"
+	hostnameType  = "Hostname"
+	webAddrsType  = "WebAddress"
+	awsAccType    = "AWSAccount"
+	dockerImgType = "DockerImage"
+	gitRepoType   = "GitRepository"
 )
 
 var (
@@ -78,19 +99,18 @@ func init() {
 // where we want to scan a domain that also is a hostname which
 // resolves to a private IP. In that case the domain won't be scanned
 // while it should.
-func IsScannable(asset string) bool {
-	if types.IsIP(asset) || types.IsCIDR(asset) {
-		log.Printf("%s is IP or CIDR", asset)
-		ok, _ := isAllowed(asset) // nolint
+func IsScannable(target, targetType string) bool {
+	if targetType == ipType || targetType == ipRangeType {
+		ok, _ := isAllowed(target) // nolint
 		return ok
 	}
 
-	if types.IsWebAddress(asset) {
-		u, _ := url.ParseRequestURI(asset) // nolint
-		asset = u.Hostname()
+	if targetType == webAddrsType {
+		u, _ := url.ParseRequestURI(target) // nolint
+		target = u.Hostname()
 	}
 
-	addrs, _ := net.LookupHost(asset) // nolint
+	addrs, _ := net.LookupHost(target) // nolint
 
 	return verifyIPs(addrs)
 }
@@ -127,5 +147,277 @@ func isAllowed(addr string) (bool, error) {
 			return false, nil
 		}
 	}
+	return true, nil
+}
+
+// ServiceCreds represents the credentials
+// necessary to access:
+//    - AWS Assume role through vulcan-assume-role svc.
+//    - Docker registry.
+//    - Github repository.
+type ServiceCreds interface {
+	URL() string
+	Username() string
+	Password() string
+}
+
+// AWSCreds holds data required
+// to perform an assume role request.
+type AWSCreds struct {
+	AssumeRoleURL string
+	Role          string
+}
+
+// NewAWSCreds creates a new AWS Credentials for Assume Role.
+func NewAWSCreds(assumeRoleURL, role string) *AWSCreds {
+	return &AWSCreds{
+		AssumeRoleURL: assumeRoleURL,
+		Role:          role,
+	}
+}
+func (c *AWSCreds) URL() string {
+	return c.AssumeRoleURL
+}
+func (c *AWSCreds) Username() string {
+	return c.Role
+}
+func (c *AWSCreds) Password() string {
+	return ""
+}
+
+type DockerCreds struct {
+	RegistryURL string
+	User        string
+	Pass        string
+}
+
+// DockerHubCreds represents a void
+// DockerCreds struct allowed to be
+// used with Docker Hub registry.
+var DockerHubCreds = &DockerCreds{}
+
+// NewDockerCreds creates a new Docker Credentials struct.
+func NewDockerCreds(registryURL, user, pass string) *DockerCreds {
+	return &DockerCreds{
+		RegistryURL: registryURL,
+		User:        user,
+		Pass:        pass,
+	}
+}
+func (c *DockerCreds) URL() string {
+	return c.RegistryURL
+}
+func (c *DockerCreds) Username() string {
+	return c.User
+}
+func (c *DockerCreds) Password() string {
+	return c.Pass
+}
+
+type GitCreds struct {
+	RepoURL string
+	User    string
+	Pass    string
+}
+
+// NewGitCreds creates a new Git Credentials struct.
+// user and pass can be void if no auth is required.
+func NewGitCreds(repoURL, user, pass string) *GitCreds {
+	return &GitCreds{
+		RepoURL: repoURL,
+		User:    user,
+		Pass:    pass,
+	}
+}
+func (c *GitCreds) URL() string {
+	return c.RepoURL
+}
+func (c *GitCreds) Username() string {
+	return c.User
+}
+func (c *GitCreds) Password() string {
+	return c.Pass
+}
+
+// IsReachable returns wether target is reachable
+// so the check execution can be performed.
+//
+// ServiceCredentials are required for AWS, Docker and Git types.
+// Constructors for AWS, Docker and Git credentials can be found
+// in this same package.
+//
+// Verifications made depend on the targetType:
+//    - IP: None.
+//    - IPRange: None.
+//    - Hostname: NS Lookup resolution.
+//    - WebAddress: HTTP GET request.
+//    - AWSAccount: Assume Role.
+//    - DockerImage: Docker pull.
+//    - GitRepository: Git clone.
+//
+// This function does not return any output related to the process in order to
+// verify the target's reachability. This output can be useful for some cases
+// in order to not repeat work in the check execution (e.g.: Obtaining the
+// Assume Role token). For this purpose other individual methods can be called
+// from this same package with further options for AWS, Docker and Git types.
+func IsReachable(target, targetType string, creds ServiceCreds) (bool, error) {
+	var isReachable bool
+	var err error
+
+	if (targetType == awsAccType || targetType == dockerImgType ||
+		targetType == gitRepoType) && creds == nil {
+		return false, fmt.Errorf("ServiceCredentials are required")
+	}
+
+	switch targetType {
+	case hostnameType:
+		isReachable = IsHostnameReachable(target)
+	case webAddrsType:
+		isReachable = IsWebAddrsReachable(target)
+	case awsAccType:
+		isReachable, _, err = IsAWSAccReachable(target, creds.URL(), creds.Username())
+	case dockerImgType:
+		isReachable, err = IsDockerImgReachable(target, creds.URL(), creds.Username(), creds.Password())
+	case gitRepoType:
+		outPath := fmt.Sprintf("/tmp/%s", time.Now().String()) // Should be safe due to single thread execution
+		isReachable, err = IsGitRepoReachable(target, creds.Username(), creds.Password(), outPath, 1, true)
+	default:
+		// Return true if we don't have a
+		// verification in place for asset type.
+		isReachable = true
+	}
+
+	return isReachable, err
+}
+
+// IsHostnameReachable returns wether the
+// input hostname target can be resolved.
+func IsHostnameReachable(target string) bool {
+	_, err := net.LookupHost(target)
+	if err != nil {
+		if dnsErr, ok := err.(*net.DNSError); ok {
+			return !dnsErr.IsNotFound
+		}
+	}
+	return true
+}
+
+// IsWebAddrsReachable returns wether the
+// input web address accepts HTTP requests.
+func IsWebAddrsReachable(target string) bool {
+	_, err := http.Get(target)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+// IsAWSAccReachable returns wether the input AWS account allows to
+// assume role with the given params through the vulcan-assume-role service.
+// If role is assumed correctly for the given account, STS credentials are returned.
+func IsAWSAccReachable(accID, assumeRoleURL, role string) (bool, *credentials.Credentials, error) {
+	jsonBody, _ := json.Marshal(map[string]string{ // nolint
+		"account_id": accID,
+		"role":       role,
+	})
+	req, err := http.NewRequest("POST", assumeRoleURL, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return false, nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, nil, err
+	}
+	defer resp.Body.Close()
+
+	// If we are not allowed to assume role on the
+	// target AWS account, check can not be executed
+	// on asset, so return false.
+	if resp.StatusCode == http.StatusForbidden {
+		return false, nil, nil
+	}
+
+	assumeRoleResp := struct {
+		AccessKey       string `json:"access_key"`
+		SecretAccessKey string `json:"secret_access_key"`
+		SessionToken    string `json:"session_token"`
+	}{}
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, nil, err
+	}
+	err = json.Unmarshal(buf, &assumeRoleResp)
+	if err != nil {
+		return false, nil, err
+	}
+
+	return true, credentials.NewStaticCredentials(
+		assumeRoleResp.AccessKey,
+		assumeRoleResp.SecretAccessKey,
+		assumeRoleResp.SessionToken), nil
+}
+
+// IsDockerImgReachable returns wether the input Docker image can be
+// pulled with given creds. A void registry URL is no error, and will
+// target public Docker Hub without authentication.
+func IsDockerImgReachable(target, registryURL, user, pass string) (bool, error) {
+	ctx := context.Background()
+
+	envCli, err := docker.NewEnvClient()
+	if err != nil {
+		return false, err
+	}
+	cli := dockerutils.NewClient(envCli)
+
+	// If registry has not been set
+	// do not perform login.
+	if registryURL != "" {
+		err = cli.Login(
+			ctx,
+			registryURL,
+			user,
+			pass,
+		)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	if err := cli.Pull(ctx, target); err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+// IsGitRepoReachable returns wether the input Git repository can be cloned.
+// If no authentication is required, user and pass parameters can be void.
+//    - outPath specifies the output path to clone the repo.
+//    - depth indicates the clone depth.
+//    - clean indicates that cloned repo dir must be removed before exit function.
+func IsGitRepoReachable(target, user, pass, outPath string, depth int, clean bool) (bool, error) {
+	if err := os.MkdirAll(outPath, 0755); err != nil {
+		return false, err
+	}
+	if clean {
+		defer os.RemoveAll(outPath)
+	}
+
+	auth := &gitauth.BasicAuth{
+		Username: user,
+		Password: pass,
+	}
+
+	_, err := git.PlainClone(outPath, false, &git.CloneOptions{
+		URL:   target,
+		Auth:  auth,
+		Depth: depth,
+	})
+	if err != nil {
+		return false, err
+	}
+
 	return true, nil
 }
