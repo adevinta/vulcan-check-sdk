@@ -16,7 +16,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	docker "github.com/docker/docker/client"
-	"github.com/miekg/dns"
 	git "gopkg.in/src-d/go-git.v4"
 	gitauth "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 
@@ -24,9 +23,6 @@ import (
 )
 
 const (
-	dnsConfFilePath      = "/etc/resolv.conf"
-	noSuchHostErrorToken = "no such host"
-
 	// Supported types.
 	ipType        = "IP"
 	ipRangeType   = "IPRange"
@@ -39,9 +35,9 @@ const (
 )
 
 var (
-	dnsConf *dns.ClientConfig
-	// ErrFailedToGetDNSAnswer represents error returned when unable to get a valid answer from the current configured dns
-	// servers.
+	// ErrFailedToGetDNSAnswer represents error returned
+	// when unable to get a valid answer from the current
+	// configured dns servers.
 	ErrFailedToGetDNSAnswer = errors.New("failed to get a valid answer")
 	reservedIPV4s           = []string{
 		"0.0.0.0/8",
@@ -416,7 +412,9 @@ func IsGitRepoReachable(target, user, pass, outPath string, depth int, clean boo
 		Depth: depth,
 	})
 	if err != nil {
-		return false, err
+		// If we get an error on clone,
+		// return not reachable.
+		return false, nil
 	}
 
 	return true, nil

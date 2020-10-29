@@ -140,7 +140,7 @@ func TestTarget_IsWebAddrsReachable(t *testing.T) {
 	}{
 		{
 			name:   "Should return true, website reachable",
-			target: "http://www.example.com",
+			target: "https://www.adevinta.com",
 			want:   true,
 		},
 		{
@@ -385,6 +385,8 @@ func TestTarget_IsGitRepoReachable(t *testing.T) {
 					t.Fatalf("Expected outPath dir to still exist, but was cleaned up")
 				}
 			}
+			// Ensure outPath test dir is removed in any case
+			os.RemoveAll(tt.input.outPath) // nolint
 		})
 	}
 }
