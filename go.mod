@@ -15,7 +15,6 @@ require (
 	github.com/google/go-cmp v0.3.1
 	github.com/kr/pretty v0.1.0
 	github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee
-	github.com/miekg/dns v1.1.22
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	golang.org/x/crypto v0.0.0-20191202143827-86a70503ff7e // indirect
