@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	docker "github.com/docker/docker/client"
 	git "gopkg.in/src-d/go-git.v4"
@@ -308,12 +309,16 @@ func IsWebAddrsReachable(target string) bool {
 	return true
 }
 
-// IsAWSAccReachable returns wether the input AWS account allows to
-// assume role with the given params through the vulcan-assume-role service.
+// IsAWSAccReachable returns wether the AWS account associated with the input ARN
+// allows to assume role with the given params through the vulcan-assume-role service.
 // If role is assumed correctly for the given account, STS credentials are returned.
-func IsAWSAccReachable(accID, assumeRoleURL, role string) (bool, *credentials.Credentials, error) {
+func IsAWSAccReachable(accARN, assumeRoleURL, role string) (bool, *credentials.Credentials, error) {
+	parsedARN, err := arn.Parse(accARN)
+	if err != nil {
+		return false, nil, err
+	}
 	jsonBody, _ := json.Marshal(map[string]string{ // nolint
-		"account_id": accID,
+		"account_id": parsedARN.AccountID,
 		"role":       role,
 	})
 	req, err := http.NewRequest("POST", assumeRoleURL, bytes.NewBuffer(jsonBody))
