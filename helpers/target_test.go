@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -181,11 +182,15 @@ func TestTarget_IsAWSAccReachable(t *testing.T) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		_, okAcc := assumeRoleReq["account_id"]
+		accID, okAcc := assumeRoleReq["account_id"]
 		_, okRole := assumeRoleReq["role"]
 		if !okAcc || !okRole {
 			w.WriteHeader(http.StatusBadRequest)
 			return
+		}
+		if !isAWSAccountID(accID) {
+			t.Log("Mock server payload is not a valid accID")
+			w.WriteHeader(http.StatusBadRequest)
 		}
 
 		// Build response body
@@ -240,7 +245,7 @@ func TestTarget_IsAWSAccReachable(t *testing.T) {
 		{
 			name: "Should return true, granted assume role",
 			input: input{
-				accID: "accID1",
+				accID: "arn:aws:iam::000000000000:root",
 				role:  "role1",
 			},
 			srvHandler: okHandler,
@@ -254,7 +259,7 @@ func TestTarget_IsAWSAccReachable(t *testing.T) {
 		{
 			name: "Should return false, forbidden assume role",
 			input: input{
-				accID: "accID2",
+				accID: "arn:aws:iam::111111111111:root",
 				role:  "role2",
 			},
 			srvHandler: koHandler,
@@ -282,6 +287,13 @@ func TestTarget_IsAWSAccReachable(t *testing.T) {
 			testSrv.Close()
 		})
 	}
+}
+
+func isAWSAccountID(accID string) bool {
+	if _, err := strconv.Atoi(accID); err == nil && len(accID) == 12 {
+		return true
+	}
+	return false
 }
 
 func TestTarget_IsDockerImgReachable(t *testing.T) {
