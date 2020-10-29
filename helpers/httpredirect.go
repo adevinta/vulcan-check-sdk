@@ -14,7 +14,7 @@ const (
 var client *http.Client
 
 func init() {
-	client = http.DefaultClient
+	client = &http.Client{}
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
