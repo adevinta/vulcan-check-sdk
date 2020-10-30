@@ -105,6 +105,56 @@ func TestTarget_IsScannable(t *testing.T) {
 	}
 }
 
+func TestTarget_detectAssetType(t *testing.T) {
+	testCases := []struct {
+		target        string
+		wantAssetType string
+	}{
+		{
+			target:        "127.0.0.1",
+			wantAssetType: ipType,
+		},
+		{
+			target:        "1.1.1.1",
+			wantAssetType: ipType,
+		},
+		{
+			target:        "127.0.0.1/24",
+			wantAssetType: ipRangeType,
+		},
+		{
+			target:        "registry.hub.docker.com/library/alpine:latest",
+			wantAssetType: dockerImgType,
+		},
+		{
+			target:        "arn:aws:iam::111111111111:root",
+			wantAssetType: awsAccType,
+		},
+		{
+			target:        "http://www.example.com",
+			wantAssetType: webAddrsType,
+		},
+		{
+			target:        "example.com",
+			wantAssetType: hostnameType,
+		},
+		{
+			target:        "https://github.com/adevinta/errors.git",
+			wantAssetType: gitRepoType,
+		},
+	}
+
+	for _, tc := range testCases {
+		gotType, err := detectAssetType(tc.target)
+		if err != nil {
+			t.Fatalf("Expected no error but got: %v", err)
+		}
+		if gotType != tc.wantAssetType {
+			t.Fatalf("Expected type to be %s, but got %s", tc.wantAssetType, gotType)
+		}
+	}
+}
+
 func TestTarget_IsHostnameReachable(t *testing.T) {
 	testCases := []struct {
 		name   string
@@ -346,7 +396,7 @@ func TestTarget_IsGitRepoReachable(t *testing.T) {
 		{
 			name: "Should return true and clean",
 			input: input{
-				target:  "https://github.com/adevinta/errors",
+				target:  "https://github.com/adevinta/errors.git",
 				outPath: "/tmp/helpersTest/target/git1",
 				depth:   1,
 				clean:   true,
@@ -356,7 +406,7 @@ func TestTarget_IsGitRepoReachable(t *testing.T) {
 		{
 			name: "Should return true and NOT clean",
 			input: input{
-				target:  "https://github.com/adevinta/errors",
+				target:  "https://github.com/adevinta/errors.git",
 				outPath: "/tmp/helpersTest/target/git2",
 				depth:   1,
 				clean:   false,
