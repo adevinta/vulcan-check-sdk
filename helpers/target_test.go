@@ -15,89 +15,89 @@ import (
 
 func TestTarget_IsScannable(t *testing.T) {
 	tests := []struct {
-		name       string
-		target     string
-		targetType string
-		want       bool
+		name      string
+		target    string
+		assetType string
+		want      bool
 	}{
 		{
-			name:       "ValidCIDR",
-			target:     "1.1.1.1/24",
-			targetType: ipRangeType,
-			want:       true,
+			name:      "ValidCIDR",
+			target:    "1.1.1.1/24",
+			assetType: ipRangeType,
+			want:      true,
 		},
 		{
-			name:       "ValidIP",
-			target:     "1.1.1.1",
-			targetType: ipType,
-			want:       true,
+			name:      "ValidIP",
+			target:    "1.1.1.1",
+			assetType: ipType,
+			want:      true,
 		},
 		{
-			name:       "ValidHostname",
-			target:     "www.google.com",
-			targetType: hostnameType,
-			want:       true,
+			name:      "ValidHostname",
+			target:    "www.google.com",
+			assetType: hostnameType,
+			want:      true,
 		},
 		{
-			name:       "ValidURL",
-			target:     "http://www.google.com",
-			targetType: webAddrsType,
-			want:       true,
+			name:      "ValidURL",
+			target:    "http://www.google.com",
+			assetType: webAddrsType,
+			want:      true,
 		},
 		{
-			name:       "ValidDomainName",
-			target:     "google.com",
-			targetType: domainType,
-			want:       true,
+			name:      "ValidDomainName",
+			target:    "google.com",
+			assetType: domainType,
+			want:      true,
 		},
 		{
-			name:       "ValidDockerImage",
-			target:     "registry.hub.docker.com/library/alpine:latest",
-			targetType: dockerImgType,
-			want:       true,
+			name:      "ValidDockerImage",
+			target:    "registry.hub.docker.com/library/alpine:latest",
+			assetType: dockerImgType,
+			want:      true,
 		},
 		{
-			name:       "ValidAWSAccount",
-			target:     "arn:aws:iam::111111111111:root",
-			targetType: awsAccType,
-			want:       true,
+			name:      "ValidAWSAccount",
+			target:    "arn:aws:iam::111111111111:root",
+			assetType: awsAccType,
+			want:      true,
 		},
 		{
-			name:       "HostnameNotResolve",
-			target:     "test.example.com",
-			targetType: hostnameType,
-			want:       true,
+			name:      "HostnameNotResolve",
+			target:    "test.example.com",
+			assetType: hostnameType,
+			want:      true,
 		},
 		{
-			name:       "PrivateCIDR",
-			target:     "127.0.0.1/24",
-			targetType: ipRangeType,
-			want:       false,
+			name:      "PrivateCIDR",
+			target:    "127.0.0.1/24",
+			assetType: ipRangeType,
+			want:      false,
 		},
 		{
-			name:       "PrivateIP",
-			target:     "127.0.0.1",
-			targetType: ipType,
-			want:       false,
+			name:      "PrivateIP",
+			target:    "127.0.0.1",
+			assetType: ipType,
+			want:      false,
 		},
 		{
-			name:       "HostnameResolvesPrivate",
-			target:     "localhost",
-			targetType: hostnameType,
-			want:       false,
+			name:      "HostnameResolvesPrivate",
+			target:    "localhost",
+			assetType: hostnameType,
+			want:      false,
 		},
 		{
-			name:       "URLResolvesPrivate",
-			target:     "https://localhost",
-			targetType: webAddrsType,
-			want:       false,
+			name:      "URLResolvesPrivate",
+			target:    "https://localhost",
+			assetType: webAddrsType,
+			want:      false,
 		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got := IsScannable(tt.target, tt.targetType)
+			got := IsScannable(tt.target, tt.assetType)
 			if got != tt.want {
 				t.Errorf("Target.IsScannable() = %v, want %v", got, tt.want)
 			}

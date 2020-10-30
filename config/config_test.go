@@ -31,7 +31,7 @@ func TestOverrideConfigFromEnvVars(t *testing.T) {
 					loggerLevelEnv:      "level",
 					loggerFormatterEnv:  "fmt",
 					checkTargetEnv:      "target",
-					checkTargetTypeEnv:  "targetType",
+					checkAssetTypeEnv:   "assetType",
 					checkOptionsEnv:     "opts",
 					checkIDEnv:          "id",
 					commModeEnv:         "push",
@@ -45,7 +45,7 @@ func TestOverrideConfigFromEnvVars(t *testing.T) {
 			want: &Config{
 				Check: CheckConfig{
 					Target:           "target",
-					TargetType:       "targetType",
+					AssetType:        "assetType",
 					Opts:             "opts",
 					CheckID:          "id",
 					CheckTypeName:    "acheck",
@@ -95,7 +95,7 @@ func TestOverrideConfigFromOpts(t *testing.T) {
 					loggerLevelEnv:      "level",
 					loggerFormatterEnv:  "fmt",
 					checkTargetEnv:      "target",
-					checkTargetTypeEnv:  "targetType",
+					checkAssetTypeEnv:   "assetType",
 					checkOptionsEnv:     "{\"debug\":true}",
 					checkIDEnv:          "id",
 					commModeEnv:         "push",
@@ -109,7 +109,7 @@ func TestOverrideConfigFromOpts(t *testing.T) {
 			want: &Config{
 				Check: CheckConfig{
 					Target:           "target",
-					TargetType:       "targetType",
+					AssetType:        "assetType",
 					Opts:             "{\"debug\":true}",
 					CheckID:          "id",
 					CheckTypeName:    "acheck",
@@ -182,7 +182,7 @@ func TestLoadConfigFromFile(t *testing.T) {
 					CheckID:          "id",
 					Opts:             "{\"policy\":21}",
 					Target:           "localhost:3000",
-					TargetType:       "Hostname",
+					AssetType:        "Hostname",
 					CheckTypeName:    "typeName",
 					CheckTypeVersion: "2",
 				},

@@ -7,7 +7,7 @@ BufferLen = 10
 
 [Check]
 Target = "localhost:3000"
-TargetType = "Hostname"
+AssetType = "Hostname"
 Options = "{\"policy\":21}"
 CheckId = "id"
 CheckTypeName = "typeName"

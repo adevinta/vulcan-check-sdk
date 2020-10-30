@@ -28,7 +28,7 @@ var (
 
 	// VoidCheckerCleanUp defines a clean up function that does nothing this is usefull
 	// for checks that don't need to do any cleanup when the check finalizes.
-	VoidCheckerCleanUp = func(ctx context.Context, target, targetType, opts string) {}
+	VoidCheckerCleanUp = func(ctx context.Context, target, assetType, opts string) {}
 )
 
 func mustParseFlags() {
@@ -51,24 +51,24 @@ type Check interface {
 
 // Checker defines the shape a checker must have in order to be executed as vulcan-check.
 type Checker interface {
-	Run(ctx context.Context, target, targetType string, opts string, state state.State) error
-	CleanUp(ctx context.Context, target, targetType, opts string)
+	Run(ctx context.Context, target, assetType string, opts string, state state.State) error
+	CleanUp(ctx context.Context, target, assetType, opts string)
 }
 
 // CheckerHandleRun func type to specify a Run handler function for a checker.
-type CheckerHandleRun func(ctx context.Context, target, targetType string, opts string, state state.State) error
+type CheckerHandleRun func(ctx context.Context, target, assetType string, opts string, state state.State) error
 
 // Run is used as adapter to satisfy the method with same name in interface Checker.
-func (handler CheckerHandleRun) Run(ctx context.Context, target, targetType string, opts string, state state.State) error {
-	return (handler(ctx, target, targetType, opts, state))
+func (handler CheckerHandleRun) Run(ctx context.Context, target, assetType string, opts string, state state.State) error {
+	return (handler(ctx, target, assetType, opts, state))
 }
 
 // CheckerHandleCleanUp func type to specify a CleanUp handler function for a checker.
-type CheckerHandleCleanUp func(ctx context.Context, target, targetType, opts string)
+type CheckerHandleCleanUp func(ctx context.Context, target, assetType, opts string)
 
 // CleanUp is used as adapter to satisfy the method with same name in interface Checker.
-func (handler CheckerHandleCleanUp) CleanUp(ctx context.Context, target, targetType, opts string) {
-	(handler(ctx, target, targetType, opts))
+func (handler CheckerHandleCleanUp) CleanUp(ctx context.Context, target, assetType, opts string) {
+	(handler(ctx, target, assetType, opts))
 }
 
 // NewCheckFromHandlerWithCleanUp creates a new check given a checker run handler.

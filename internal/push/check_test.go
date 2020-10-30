@@ -77,7 +77,7 @@ func TestIntegrationPushMode(t *testing.T) {
 						CheckID:       "checkID",
 						Opts:          "",
 						Target:        "www.example.com",
-						TargetType:    "Hostname",
+						AssetType:     "Hostname",
 						CheckTypeName: "checkTypeName",
 					},
 					Log: config.LogConfig{

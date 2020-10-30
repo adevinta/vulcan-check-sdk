@@ -96,13 +96,13 @@ func init() {
 // where we want to scan a domain that also is a hostname which
 // resolves to a private IP. In that case the domain won't be scanned
 // while it should.
-func IsScannable(target, targetType string) bool {
-	if targetType == ipType || targetType == ipRangeType {
+func IsScannable(target, assetType string) bool {
+	if assetType == ipType || assetType == ipRangeType {
 		ok, _ := isAllowed(target) // nolint
 		return ok
 	}
 
-	if targetType == webAddrsType {
+	if assetType == webAddrsType {
 		u, _ := url.ParseRequestURI(target) // nolint
 		target = u.Hostname()
 	}
@@ -245,7 +245,7 @@ func (c *GitCreds) Password() string {
 // Constructors for AWS, Docker and Git credentials can be found
 // in this same package.
 //
-// Verifications made depend on the targetType:
+// Verifications made depend on the asset type:
 //    - IP: None.
 //    - IPRange: None.
 //    - DomainName: None.
@@ -260,16 +260,16 @@ func (c *GitCreds) Password() string {
 // in order to not repeat work in the check execution (e.g.: Obtaining the
 // Assume Role token). For this purpose other individual methods can be called
 // from this same package with further options for AWS, Docker and Git types.
-func IsReachable(target, targetType string, creds ServiceCreds) (bool, error) {
+func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 	var isReachable bool
 	var err error
 
-	if (targetType == awsAccType || targetType == dockerImgType ||
-		targetType == gitRepoType) && creds == nil {
+	if (assetType == awsAccType || assetType == dockerImgType ||
+		assetType == gitRepoType) && creds == nil {
 		return false, fmt.Errorf("ServiceCredentials are required")
 	}
 
-	switch targetType {
+	switch assetType {
 	case hostnameType:
 		isReachable = IsHostnameReachable(target)
 	case webAddrsType:

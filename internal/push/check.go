@@ -92,12 +92,12 @@ func (c *Check) executeChecker() {
 	}
 
 	// Do not run checks against hostnames that resolve to private IPs unless allowed.
-	if ptrToBool(c.config.AllowPrivateIPs) || helpers.IsScannable(c.config.Check.Target, c.config.Check.TargetType) {
-		err = c.checker.Run(c.ctx, c.config.Check.Target, c.config.Check.TargetType, c.config.Check.Opts, runtimeCheckState)
+	if ptrToBool(c.config.AllowPrivateIPs) || helpers.IsScannable(c.config.Check.Target, c.config.Check.AssetType) {
+		err = c.checker.Run(c.ctx, c.config.Check.Target, c.config.Check.AssetType, c.config.Check.Opts, runtimeCheckState)
 		// We always execute the cleanup function after the check has finished.
 		// We use a fresh new context because here the origin context created for
 		// running the check can be finalized.
-		c.checker.CleanUp(context.Background(), c.config.Check.Target, c.config.Check.TargetType, c.config.Check.Opts)
+		c.checker.CleanUp(context.Background(), c.config.Check.Target, c.config.Check.AssetType, c.config.Check.Opts)
 	} else {
 		err = fmt.Errorf("target is not scannable")
 	}

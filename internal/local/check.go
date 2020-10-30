@@ -35,7 +35,7 @@ func (c *Check) RunAndServe() {
 		ProgressReporter: astate.ProgressReporterHandler(c.formatter.progress),
 	}
 	go func() {
-		c.done <- c.checker.Run(c.ctx, c.config.Check.Target, c.config.Check.TargetType, c.config.Check.Opts, runtimeState)
+		c.done <- c.checker.Run(c.ctx, c.config.Check.Target, c.config.Check.AssetType, c.config.Check.Opts, runtimeState)
 	}()
 	var err error
 LOOP:
@@ -48,7 +48,7 @@ LOOP:
 			break LOOP
 		}
 	}
-	c.checker.CleanUp(context.Background(), c.config.Check.Target, c.config.Check.TargetType, c.config.Check.Opts)
+	c.checker.CleanUp(context.Background(), c.config.Check.Target, c.config.Check.AssetType, c.config.Check.Opts)
 	c.formatter.result(err, runtimeState.ResultData)
 	if err != nil {
 		os.Exit(0)
