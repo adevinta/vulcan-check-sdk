@@ -148,7 +148,9 @@ func isAllowed(addr string) (bool, error) {
 }
 
 // ServiceCreds represents the credentials
-// necessary to access:
+// necessary to access an authenticated service.
+// There are constructors available in this same
+// package for:
 //    - AWS Assume role through vulcan-assume-role svc.
 //    - Docker registry.
 //    - Github repository.
