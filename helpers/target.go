@@ -248,6 +248,7 @@ func (c *GitCreds) Password() string {
 // Verifications made depend on the targetType:
 //    - IP: None.
 //    - IPRange: None.
+//    - DomainName: None.
 //    - Hostname: NS Lookup resolution.
 //    - WebAddress: HTTP GET request.
 //    - AWSAccount: Assume Role.
