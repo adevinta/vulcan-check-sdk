@@ -212,12 +212,6 @@ func TestTarget_IsWebAddrsReachable(t *testing.T) {
 }
 
 func TestTarget_IsAWSAccReachable(t *testing.T) {
-	type input struct {
-		accID string
-		// assumeRoleURL string // Set by httptest srv
-		role string
-	}
-
 	// Test http handler for granted assume role
 	okHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify payload is correct
@@ -285,6 +279,13 @@ func TestTarget_IsAWSAccReachable(t *testing.T) {
 		w.WriteHeader(http.StatusForbidden)
 	})
 
+	type input struct {
+		accID string
+		// assumeRoleURL string // Set by httptest srv
+		role         string
+		sessDuration int
+	}
+
 	testCases := []struct {
 		name       string
 		input      input
@@ -321,7 +322,7 @@ func TestTarget_IsAWSAccReachable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			testSrv := httptest.NewServer(tt.srvHandler)
 
-			isReachable, creds, err := IsAWSAccReachable(tt.input.accID, testSrv.URL, tt.input.role)
+			isReachable, creds, err := IsAWSAccReachable(tt.input.accID, testSrv.URL, tt.input.role, tt.input.sessDuration)
 			if err != nil {
 				t.Fatalf("Expected no error but got: %v", err)
 			}

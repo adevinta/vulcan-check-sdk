@@ -326,7 +326,7 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 	case webAddrsType:
 		isReachable = IsWebAddrsReachable(target)
 	case awsAccType:
-		isReachable, _, err = IsAWSAccReachable(target, creds.URL(), creds.Username())
+		isReachable, _, err = IsAWSAccReachable(target, creds.URL(), creds.Username(), 1)
 	case dockerImgType:
 		isReachable, err = IsDockerImgReachable(target, creds.URL(), creds.Username(), creds.Password())
 	case gitRepoType:
@@ -366,15 +366,19 @@ func IsWebAddrsReachable(target string) bool {
 // IsAWSAccReachable returns wether the AWS account associated with the input ARN
 // allows to assume role with the given params through the vulcan-assume-role service.
 // If role is assumed correctly for the given account, STS credentials are returned.
-func IsAWSAccReachable(accARN, assumeRoleURL, role string) (bool, *credentials.Credentials, error) {
+func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bool, *credentials.Credentials, error) {
 	parsedARN, err := arn.Parse(accARN)
 	if err != nil {
 		return false, nil, err
 	}
-	jsonBody, _ := json.Marshal(map[string]string{ // nolint
+	params := map[string]interface{}{
 		"account_id": parsedARN.AccountID,
 		"role":       role,
-	})
+	}
+	if sessDuration > 0 {
+		params["duration"] = sessDuration
+	}
+	jsonBody, _ := json.Marshal(params)
 	req, err := http.NewRequest("POST", assumeRoleURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return false, nil, err
