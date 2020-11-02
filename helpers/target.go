@@ -35,6 +35,11 @@ const (
 	awsAccType    = "AWSAccount"
 	dockerImgType = "DockerImage"
 	gitRepoType   = "GitRepository"
+
+	// minSesstime is the minimum session
+	// time (seconds) allowed by AWS to
+	// assume role into an account.
+	minSessTime = 900
 )
 
 var (
@@ -293,7 +298,7 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 		isReachable, err = IsDockerImgReachable(target, creds.URL(), creds.Username(), creds.Password())
 	case gitRepoType:
 		outPath := fmt.Sprintf("/tmp/%s", time.Now().String()) // Should be safe due to single thread execution
-		isReachable, err = IsGitRepoReachable(target, creds.Username(), creds.Password(), outPath, 1, true)
+		isReachable, err = IsGitRepoReachable(target, creds.Username(), creds.Password(), outPath, minSessTime, true)
 	default:
 		// Return true if we don't have a
 		// verification in place for asset type.
