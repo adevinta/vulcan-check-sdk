@@ -446,6 +446,11 @@ func IsDockerImgReachable(target, registryURL, user, pass string) (bool, error) 
 	}
 
 	if err := cli.Pull(ctx, target); err != nil {
+		if strings.Contains(err.Error(), "docker daemon") {
+			// If error is related to comm with Docker daemon,
+			// return err. Otherwise return not reachable.
+			return false, err
+		}
 		return false, nil
 	}
 	return true, nil
