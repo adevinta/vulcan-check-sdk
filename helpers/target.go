@@ -92,6 +92,8 @@ func init() {
 
 // IsScannable tells you whether an asset can be scanned or not,
 // based in its type and value.
+// If asset type is void, it will be inferred from target.
+//
 // The goal it's to prevent scanning hosts that are not public.
 // Limitation: as the asset type is not available the function
 // tries to guess the asset type, and that can lead to the scenario
@@ -282,6 +284,7 @@ func (c *GitCreds) Password() string {
 
 // IsReachable returns wether target is reachable
 // so the check execution can be performed.
+// If asset type is void, it will be inferred from target.
 //
 // ServiceCredentials are required for AWS, Docker and Git types.
 // Constructors for AWS, Docker and Git credentials can be found
