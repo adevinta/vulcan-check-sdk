@@ -293,12 +293,12 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 	case webAddrsType:
 		isReachable = IsWebAddrsReachable(target)
 	case awsAccType:
-		isReachable, _, err = IsAWSAccReachable(target, creds.URL(), creds.Username(), 1)
+		isReachable, _, err = IsAWSAccReachable(target, creds.URL(), creds.Username(), minSessTime)
 	case dockerImgType:
 		isReachable, err = IsDockerImgReachable(target, creds.URL(), creds.Username(), creds.Password())
 	case gitRepoType:
 		outPath := fmt.Sprintf("/tmp/%s", time.Now().String()) // Should be safe due to single thread execution
-		isReachable, err = IsGitRepoReachable(target, creds.Username(), creds.Password(), outPath, minSessTime, true)
+		isReachable, err = IsGitRepoReachable(target, creds.Username(), creds.Password(), outPath, 1, true)
 	default:
 		// Return true if we don't have a
 		// verification in place for asset type.
