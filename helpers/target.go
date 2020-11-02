@@ -92,37 +92,25 @@ func init() {
 
 // IsScannable tells you whether an asset can be scanned or not,
 // based in its type and value.
-// If asset type is void, it will be inferred from target.
-//
 // The goal it's to prevent scanning hosts that are not public.
 // Limitation: as the asset type is not available the function
 // tries to guess the asset type, and that can lead to the scenario
 // where we want to scan a domain that also is a hostname which
 // resolves to a private IP. In that case the domain won't be scanned
 // while it should.
-func IsScannable(target, assetType string) bool {
-	// In order to support backward compatibility
-	// we have to support assetType being void.
-	var err error
-	if assetType == "" {
-		assetType, err = detectAssetType(target)
-		if err != nil {
-			log.Printf("Unable to detect asset type for: %s", target)
-			return false
-		}
-	}
-
-	if assetType == ipType || assetType == ipRangeType {
-		ok, _ := isAllowed(target) // nolint
+func IsScannable(asset string) bool {
+	if types.IsIP(asset) || types.IsCIDR(asset) {
+		log.Printf("%s is IP or CIDR", asset)
+		ok, _ := isAllowed(asset) // nolint
 		return ok
 	}
 
-	if assetType == webAddrsType {
-		u, _ := url.ParseRequestURI(target) // nolint
-		target = u.Hostname()
+	if types.IsWebAddress(asset) {
+		u, _ := url.ParseRequestURI(asset) // nolint
+		asset = u.Hostname()
 	}
 
-	addrs, _ := net.LookupHost(target) // nolint
+	addrs, _ := net.LookupHost(asset) // nolint
 
 	return verifyIPs(addrs)
 }
@@ -134,35 +122,6 @@ func verifyIPs(addrs []string) bool {
 		}
 	}
 	return true
-}
-
-func detectAssetType(target string) (string, error) {
-	if types.IsAWSARN(target) {
-		return awsAccType, nil
-	}
-	if types.IsDockerImage(target) {
-		return dockerImgType, nil
-	}
-	if types.IsGitRepository(target) {
-		return gitRepoType, nil
-	}
-	if types.IsIP(target) {
-		return ipType, nil
-	}
-	if types.IsCIDR(target) {
-		return ipRangeType, nil
-	}
-	if types.IsURL(target) {
-		return webAddrsType, nil
-	}
-	if types.IsHostname(target) {
-		return hostnameType, nil
-	}
-	if isDomain, _ := types.IsDomainName(target); isDomain {
-		return domainType, nil
-	}
-
-	return "", errors.New("Unable to detect asset type")
 }
 
 func isAllowed(addr string) (bool, error) {
@@ -342,6 +301,35 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 	}
 
 	return isReachable, err
+}
+
+func detectAssetType(target string) (string, error) {
+	if types.IsAWSARN(target) {
+		return awsAccType, nil
+	}
+	if types.IsDockerImage(target) {
+		return dockerImgType, nil
+	}
+	if types.IsGitRepository(target) {
+		return gitRepoType, nil
+	}
+	if types.IsIP(target) {
+		return ipType, nil
+	}
+	if types.IsCIDR(target) {
+		return ipRangeType, nil
+	}
+	if types.IsURL(target) {
+		return webAddrsType, nil
+	}
+	if types.IsHostname(target) {
+		return hostnameType, nil
+	}
+	if isDomain, _ := types.IsDomainName(target); isDomain {
+		return domainType, nil
+	}
+
+	return "", errors.New("Unable to detect asset type")
 }
 
 // IsHostnameReachable returns wether the
