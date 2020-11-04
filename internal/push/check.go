@@ -38,8 +38,8 @@ type Check struct {
 
 // Checker defines the shape a checker must have in order to be executed as vulcan-check.
 type Checker interface {
-	Run(ctx context.Context, target, targetType string, opts string, state state.State) error
-	CleanUp(ctx context.Context, target, targetType, opts string)
+	Run(ctx context.Context, target, assetType string, opts string, state state.State) error
+	CleanUp(ctx context.Context, target, assetType, opts string)
 }
 
 // Abort recives the Abort message from the api that is listening for a term signal.

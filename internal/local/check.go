@@ -98,8 +98,8 @@ type State struct {
 
 // Checker defines the shape a checker must have in order to be executed as vulcan-check.
 type Checker interface {
-	Run(ctx context.Context, target, targetType, opts string, state astate.State) error
-	CleanUp(ctx context.Context, target, targetType, opts string)
+	Run(ctx context.Context, target, assetType, opts string, state astate.State) error
+	CleanUp(ctx context.Context, target, assetType, opts string)
 }
 
 type resultFormatter interface {

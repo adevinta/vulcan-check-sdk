@@ -19,25 +19,25 @@ import (
 	report "github.com/adevinta/vulcan-report"
 )
 
-type CheckerHandleRun func(ctx context.Context, target, targetType string, opts string, s state.State) error
+type CheckerHandleRun func(ctx context.Context, target, assetType, opts string, s state.State) error
 
 // Run is used as adapter to satisfy the method with same name in interface Checker.
-func (handler CheckerHandleRun) Run(ctx context.Context, target, targetType string, opts string, s state.State) error {
-	return (handler(ctx, target, targetType, opts, s))
+func (handler CheckerHandleRun) Run(ctx context.Context, target, assetType string, opts string, s state.State) error {
+	return (handler(ctx, target, assetType, opts, s))
 }
 
 // CheckerHandleCleanUp func type to specify a CleanUp handler function for a checker.
-type CheckerHandleCleanUp func(ctx context.Context, target, targetType, opts string)
+type CheckerHandleCleanUp func(ctx context.Context, target, assetType, opts string)
 
 // CleanUp is used as adapter to satisfy the method with same name in interface Checker.
-func (handler CheckerHandleCleanUp) CleanUp(ctx context.Context, target, targetType, opts string) {
-	(handler(ctx, target, targetType, opts))
+func (handler CheckerHandleCleanUp) CleanUp(ctx context.Context, target, assetType, opts string) {
+	(handler(ctx, target, assetType, opts))
 }
 
 // NewCheckFromHandler creates a new check given a checker run handler.
 func NewCheckFromHandlerWithConfig(name string, run CheckerHandleRun, clean CheckerHandleCleanUp, conf *config.Config, l *log.Entry) *Check {
 	if clean == nil {
-		clean = func(ctx context.Context, target, targetType, opts string) {}
+		clean = func(ctx context.Context, target, assetType, opts string) {}
 	}
 	checkerAdapter := struct {
 		CheckerHandleRun
@@ -59,7 +59,7 @@ type pushIntTest struct {
 
 type pushIntParams struct {
 	checkRunner     CheckerHandleRun
-	checkCleaner    func(resourceToClean interface{}, ctx context.Context, target, targetType, optJSON string)
+	checkCleaner    func(resourceToClean interface{}, ctx context.Context, target, assetType, optJSON string)
 	resourceToClean interface{}
 	agent           *tools.Reporter
 	checkName       string
@@ -86,7 +86,7 @@ func TestIntegrationPushMode(t *testing.T) {
 					},
 					CommMode: "push",
 				},
-				checkRunner: func(ctx context.Context, target, targetType, optJSON string, state state.State) (err error) {
+				checkRunner: func(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
 					log := logging.BuildRootLog("TestChecker")
 					log.Debug("Check running")
 					state.SetProgress(0.1)
@@ -96,7 +96,7 @@ func TestIntegrationPushMode(t *testing.T) {
 					return nil
 				},
 				resourceToClean: map[string]string{"key": "initial"},
-				checkCleaner: func(resource interface{}, ctx context.Context, target, targetType, optJSON string) {
+				checkCleaner: func(resource interface{}, ctx context.Context, target, assetType, optJSON string) {
 					r := resource.(map[string]string)
 					r["key"] = "cleaned"
 				},
@@ -194,12 +194,12 @@ func TestIntegrationPushMode(t *testing.T) {
 					},
 					CommMode: "push",
 				},
-				checkRunner: func(ctx context.Context, target, targetType, optJSON string, state state.State) (err error) {
+				checkRunner: func(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
 					<-ctx.Done()
 					return ctx.Err()
 				},
 				resourceToClean: map[string]string{"key": "initial"},
-				checkCleaner: func(resource interface{}, ctx context.Context, target, targetType, optJSON string) {
+				checkCleaner: func(resource interface{}, ctx context.Context, target, assetType, optJSON string) {
 					r := resource.(map[string]string)
 					r["key"] = "cleaned"
 				},
@@ -262,10 +262,10 @@ func TestIntegrationPushMode(t *testing.T) {
 			conf := tt.args.config
 			conf.Push.AgentAddr = a.URL
 			conf.Push.BufferLen = 10
-			var cleaner func(ctx context.Context, target, targetType, opts string)
+			var cleaner func(ctx context.Context, target, assetType, opts string)
 			if tt.args.checkCleaner != nil {
-				cleaner = func(ctx context.Context, target, targetType, opts string) {
-					tt.args.checkCleaner(tt.args.resourceToClean, ctx, target, targetType, opts)
+				cleaner = func(ctx context.Context, target, assetType, opts string) {
+					tt.args.checkCleaner(tt.args.resourceToClean, ctx, target, assetType, opts)
 				}
 			}
 			l := logging.BuildRootLog("pushCheck")

@@ -292,12 +292,14 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 		isReachable = IsHostnameReachable(target)
 	case webAddrsType:
 		isReachable = IsWebAddrsReachable(target)
+	case domainType:
+		isReachable, err = types.IsDomainName(target)
 	case awsAccType:
 		isReachable, _, err = IsAWSAccReachable(target, creds.URL(), creds.Username(), minSessTime)
 	case dockerImgType:
 		isReachable, err = IsDockerImgReachable(target, creds.URL(), creds.Username(), creds.Password())
 	case gitRepoType:
-		outPath := fmt.Sprintf("/tmp/%s", time.Now().String()) // Should be safe due to single thread execution
+		outPath := fmt.Sprintf("%s/%s", os.TempDir(), time.Now().String()) // Should be safe due to single thread execution
 		isReachable, err = IsGitRepoReachable(target, creds.Username(), creds.Password(), outPath, 1, true)
 	default:
 		// Return true if we don't have a
@@ -324,7 +326,7 @@ func detectAssetType(target string) (string, error) {
 	if types.IsCIDR(target) {
 		return ipRangeType, nil
 	}
-	if types.IsURL(target) {
+	if types.IsWebAddress(target) {
 		return webAddrsType, nil
 	}
 	if types.IsHostname(target) {
