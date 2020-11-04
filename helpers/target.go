@@ -292,8 +292,6 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 		isReachable = IsHostnameReachable(target)
 	case webAddrsType:
 		isReachable = IsWebAddrsReachable(target)
-	case domainType:
-		isReachable, err = types.IsDomainName(target)
 	case awsAccType:
 		isReachable, _, err = IsAWSAccReachable(target, creds.URL(), creds.Username(), minSessTime)
 	case dockerImgType:
