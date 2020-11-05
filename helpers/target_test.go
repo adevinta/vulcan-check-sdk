@@ -395,10 +395,7 @@ func TestTarget_IsGitRepoReachable(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			isReachable, err := IsGitRepoReachable(tt.input.target, tt.input.user, tt.input.pass)
-			if err != nil {
-				t.Fatalf("Expected no error but got: %v", err)
-			}
+			isReachable := IsGitRepoReachable(tt.input.target, tt.input.user, tt.input.pass)
 			if isReachable != tt.want {
 				t.Fatalf("Expected Git repo '%s' reachability to be %v, but got %v",
 					tt.input.target, tt.want, isReachable)

@@ -299,7 +299,7 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 	case dockerImgType:
 		isReachable, err = IsDockerImgReachable(target, creds.URL(), creds.Username(), creds.Password())
 	case gitRepoType:
-		isReachable, err = IsGitRepoReachable(target, creds.Username(), creds.Password())
+		isReachable = IsGitRepoReachable(target, creds.Username(), creds.Password())
 	default:
 		// Return true if we don't have a
 		// verification in place for asset type.
@@ -463,7 +463,7 @@ func IsDockerImgReachable(target, registryURL, user, pass string) (bool, error) 
 // IsGitRepoReachable returns wether the input Git repository is reachable
 // by performing a ls-remote.
 // If no authentication is required, user and pass parameters can be void.
-func IsGitRepoReachable(target, user, pass string) (bool, error) {
+func IsGitRepoReachable(target, user, pass string) bool {
 	rem := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name: "origin",
 		URLs: []string{target},
@@ -474,7 +474,7 @@ func IsGitRepoReachable(target, user, pass string) (bool, error) {
 	}
 	_, err := rem.List(&git.ListOptions{Auth: auth})
 	if err != nil {
-		return false, err
+		return false
 	}
-	return true, nil
+	return true
 }
