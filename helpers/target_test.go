@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"reflect"
 	"strconv"
 	"testing"
@@ -368,12 +367,9 @@ func TestTarget_IsDockerImgReachable(t *testing.T) {
 
 func TestTarget_IsGitRepoReachable(t *testing.T) {
 	type input struct {
-		target  string
-		user    string
-		pass    string
-		outPath string
-		depth   int
-		clean   bool
+		target string
+		user   string
+		pass   string
 	}
 
 	testCases := []struct {
@@ -382,32 +378,16 @@ func TestTarget_IsGitRepoReachable(t *testing.T) {
 		want  bool
 	}{
 		{
-			name: "Should return true and clean",
+			name: "Should return true",
 			input: input{
-				target:  "https://github.com/adevinta/errors.git",
-				outPath: "/tmp/helpersTest/target/git1",
-				depth:   1,
-				clean:   true,
-			},
-			want: true,
-		},
-		{
-			name: "Should return true and NOT clean",
-			input: input{
-				target:  "https://github.com/adevinta/errors.git",
-				outPath: "/tmp/helpersTest/target/git2",
-				depth:   1,
-				clean:   false,
+				target: "https://github.com/adevinta/errors.git",
 			},
 			want: true,
 		},
 		{
 			name: "Should return false",
 			input: input{
-				target:  "https://github.com/adevinta/thisissomegiberishaweno",
-				outPath: "/tmp/helpersTest/target/git3",
-				depth:   1,
-				clean:   true,
+				target: "https://github.com/adevinta/thisissomegiberishaweno.git",
 			},
 			want: false,
 		},
@@ -415,8 +395,7 @@ func TestTarget_IsGitRepoReachable(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			isReachable, err := IsGitRepoReachable(tt.input.target, tt.input.user, tt.input.pass,
-				tt.input.outPath, tt.input.depth, tt.input.clean)
+			isReachable, err := IsGitRepoReachable(tt.input.target, tt.input.user, tt.input.pass)
 			if err != nil {
 				t.Fatalf("Expected no error but got: %v", err)
 			}
@@ -424,19 +403,6 @@ func TestTarget_IsGitRepoReachable(t *testing.T) {
 				t.Fatalf("Expected Git repo '%s' reachability to be %v, but got %v",
 					tt.input.target, tt.want, isReachable)
 			}
-			if isReachable {
-				_, err = os.Stat(tt.input.outPath)
-				dirExists := !os.IsNotExist(err)
-
-				if tt.input.clean && dirExists {
-					t.Fatalf("Expected outPath dir to not exist after cleanup, but it does")
-				}
-				if !tt.input.clean && !dirExists {
-					t.Fatalf("Expected outPath dir to still exist, but was cleaned up")
-				}
-			}
-			// Ensure outPath test dir is removed in any case
-			os.RemoveAll(tt.input.outPath) // nolint
 		})
 	}
 }

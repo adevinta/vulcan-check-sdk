@@ -11,15 +11,15 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	docker "github.com/docker/docker/client"
 	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/config"
 	gitauth "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
+	"gopkg.in/src-d/go-git.v4/storage/memory"
 
 	dockerutils "github.com/adevinta/dockerutils"
 	types "github.com/adevinta/vulcan-types"
@@ -257,12 +257,12 @@ func (c *GitCreds) Password() string {
 // Verifications made depend on the asset type:
 //    - IP: None.
 //    - IPRange: None.
-//    - DomainName: None.
 //    - Hostname: NS Lookup resolution.
 //    - WebAddress: HTTP GET request.
+//    - DomainName: NS Lookup checking SOA record.
 //    - AWSAccount: Assume Role.
 //    - DockerImage: Docker pull.
-//    - GitRepository: Git clone.
+//    - GitRepository: Git ls-remote.
 //
 // This function does not return any output related to the process in order to
 // verify the target's reachability. This output can be useful for some cases
@@ -292,13 +292,14 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 		isReachable = IsHostnameReachable(target)
 	case webAddrsType:
 		isReachable = IsWebAddrsReachable(target)
+	case domainType:
+		isReachable, err = IsDomainReachable(target)
 	case awsAccType:
 		isReachable, _, err = IsAWSAccReachable(target, creds.URL(), creds.Username(), minSessTime)
 	case dockerImgType:
 		isReachable, err = IsDockerImgReachable(target, creds.URL(), creds.Username(), creds.Password())
 	case gitRepoType:
-		outPath := fmt.Sprintf("%s/%s", os.TempDir(), time.Now().String()) // Should be safe due to single thread execution
-		isReachable, err = IsGitRepoReachable(target, creds.Username(), creds.Password(), outPath, 1, true)
+		isReachable, err = IsGitRepoReachable(target, creds.Username(), creds.Password())
 	default:
 		// Return true if we don't have a
 		// verification in place for asset type.
@@ -357,6 +358,13 @@ func IsWebAddrsReachable(target string) bool {
 		return false
 	}
 	return true
+}
+
+// IsDomainReachable returns wether the input target
+// is a reachable Domain Name. The criteria to determine
+// a target as a Domain is the existence of a SOA record.
+func IsDomainReachable(target string) (bool, error) {
+	return types.IsDomainName(target)
 }
 
 // IsAWSAccReachable returns wether the AWS account associated with the input ARN
@@ -452,34 +460,21 @@ func IsDockerImgReachable(target, registryURL, user, pass string) (bool, error) 
 	return true, nil
 }
 
-// IsGitRepoReachable returns wether the input Git repository can be cloned.
+// IsGitRepoReachable returns wether the input Git repository is reachable
+// by performing a ls-remote.
 // If no authentication is required, user and pass parameters can be void.
-//    - outPath specifies the output path to clone the repo.
-//    - depth indicates the clone depth.
-//    - clean indicates that cloned repo dir must be removed before exit function.
-func IsGitRepoReachable(target, user, pass, outPath string, depth int, clean bool) (bool, error) {
-	if err := os.MkdirAll(outPath, 0755); err != nil {
-		return false, err
-	}
-	if clean {
-		defer os.RemoveAll(outPath)
-	}
-
+func IsGitRepoReachable(target, user, pass string) (bool, error) {
+	rem := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{target},
+	})
 	auth := &gitauth.BasicAuth{
 		Username: user,
 		Password: pass,
 	}
-
-	_, err := git.PlainClone(outPath, false, &git.CloneOptions{
-		URL:   target,
-		Auth:  auth,
-		Depth: depth,
-	})
+	_, err := rem.List(&git.ListOptions{Auth: auth})
 	if err != nil {
-		// If we get an error on clone,
-		// return not reachable.
-		return false, nil
+		return false, err
 	}
-
 	return true, nil
 }
