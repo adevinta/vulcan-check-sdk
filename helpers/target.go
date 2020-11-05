@@ -463,10 +463,10 @@ func IsDockerImgReachable(target, user, pass string) (bool, error) {
 	// Try with v2 registry URL
 	v2URL := fmt.Sprintf("https://%s/v2%s", repo.Registry, tagPath)
 	req, err := http.NewRequest(http.MethodGet, v2URL, nil)
-	req.Header.Add("Authorization", authHeader)
 	if err != nil {
 		return false, err
 	}
+	req.Header.Add("Authorization", authHeader)
 	resp, err := http.DefaultClient.Do(req)
 	if err == nil && resp.StatusCode == http.StatusOK {
 		// If we got HTTP 200 response, return true.
@@ -477,10 +477,10 @@ func IsDockerImgReachable(target, user, pass string) (bool, error) {
 	// Try with v1 registry URL
 	v1URL := fmt.Sprintf("https://%s/v1%s", repo.Registry, tagPath)
 	req, err = http.NewRequest(http.MethodGet, v1URL, nil)
-	req.Header.Add("Authorization", authHeader)
 	if err != nil {
 		return false, err
 	}
+	req.Header.Add("Authorization", authHeader)
 	resp, err = http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		// If we did not get HTTP response, or
