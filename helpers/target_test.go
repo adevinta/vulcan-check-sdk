@@ -337,12 +337,19 @@ func TestTarget_IsDockerImgReachable(t *testing.T) {
 	testCases := []struct {
 		name   string
 		target string
+		user   string
+		pass   string
 		want   bool
 	}{
 		{
 			name:   "Should return true, image is reachable",
 			target: "registry.hub.docker.com/library/hello-world:latest",
 			want:   true,
+		},
+		{
+			name:   "Should return false, image is NOT reachable",
+			target: "registry.hub.docker.com/library/hello-world:wrongtag",
+			want:   false,
 		},
 		{
 			name:   "Should return false, image is NOT reachable",
@@ -353,7 +360,7 @@ func TestTarget_IsDockerImgReachable(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			isReachable, err := IsDockerImgReachable(tt.target, "", "", "")
+			isReachable, err := IsDockerImgReachable(tt.target, tt.user, tt.pass)
 			if err != nil {
 				t.Fatalf("Expected no error but got: %v", err)
 			}
@@ -362,6 +369,40 @@ func TestTarget_IsDockerImgReachable(t *testing.T) {
 					tt.target, tt.want, isReachable)
 			}
 		})
+	}
+}
+
+func TestTarget_parseDockerRepo(t *testing.T) {
+	testCases := []struct {
+		repo string
+		want dockerRepo
+	}{
+		{
+			repo: "registry.hub.docker.com/library/hello-world:latest",
+			want: dockerRepo{
+				Registry: "registry.hub.docker.com",
+				Img:      "/library/hello-world",
+				Tag:      "latest",
+			},
+		},
+		{
+			repo: "artifactory.company.com/project/img_alpine:3.10.1",
+			want: dockerRepo{
+				Registry: "artifactory.company.com",
+				Img:      "/project/img_alpine",
+				Tag:      "3.10.1",
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		repo, err := parseDockerRepo(tt.repo)
+		if err != nil {
+			t.Fatalf("Expected no error but got: %v", err)
+		}
+		if !reflect.DeepEqual(tt.want, repo) {
+			t.Fatalf("Expected repo to be: %v\nBut got: %v", tt.want, repo)
+		}
 	}
 }
 

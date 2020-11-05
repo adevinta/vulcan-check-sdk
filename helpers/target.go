@@ -15,13 +15,13 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	dockertypes "github.com/docker/docker/api/types"
 	docker "github.com/docker/docker/client"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
 	gitauth "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 
-	dockerutils "github.com/adevinta/dockerutils"
 	types "github.com/adevinta/vulcan-types"
 )
 
@@ -193,9 +193,8 @@ func (c *AWSCreds) Password() string {
 }
 
 type DockerCreds struct {
-	RegistryURL string
-	User        string
-	Pass        string
+	User string
+	Pass string
 }
 
 // DockerHubCreds represents a void
@@ -204,15 +203,14 @@ type DockerCreds struct {
 var DockerHubCreds = &DockerCreds{}
 
 // NewDockerCreds creates a new Docker Credentials struct.
-func NewDockerCreds(registryURL, user, pass string) *DockerCreds {
+func NewDockerCreds(user, pass string) *DockerCreds {
 	return &DockerCreds{
-		RegistryURL: registryURL,
-		User:        user,
-		Pass:        pass,
+		User: user,
+		Pass: pass,
 	}
 }
 func (c *DockerCreds) URL() string {
-	return c.RegistryURL
+	return ""
 }
 func (c *DockerCreds) Username() string {
 	return c.User
@@ -222,22 +220,20 @@ func (c *DockerCreds) Password() string {
 }
 
 type GitCreds struct {
-	RepoURL string
-	User    string
-	Pass    string
+	User string
+	Pass string
 }
 
 // NewGitCreds creates a new Git Credentials struct.
-// user and pass can be void if no auth is required.
-func NewGitCreds(repoURL, user, pass string) *GitCreds {
+// User and pass can be void if no auth is required.
+func NewGitCreds(user, pass string) *GitCreds {
 	return &GitCreds{
-		RepoURL: repoURL,
-		User:    user,
-		Pass:    pass,
+		User: user,
+		Pass: pass,
 	}
 }
 func (c *GitCreds) URL() string {
-	return c.RepoURL
+	return ""
 }
 func (c *GitCreds) Username() string {
 	return c.User
@@ -297,7 +293,7 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 	case awsAccType:
 		isReachable, _, err = IsAWSAccReachable(target, creds.URL(), creds.Username(), minSessTime)
 	case dockerImgType:
-		isReachable, err = IsDockerImgReachable(target, creds.URL(), creds.Username(), creds.Password())
+		isReachable, err = IsDockerImgReachable(target, creds.Username(), creds.Password())
 	case gitRepoType:
 		isReachable = IsGitRepoReachable(target, creds.Username(), creds.Password())
 	default:
@@ -423,41 +419,102 @@ func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bo
 		assumeRoleResp.SessionToken), nil
 }
 
-// IsDockerImgReachable returns wether the input Docker image can be
-// pulled with given creds. A void registry URL is no error, and will
-// target public Docker Hub without authentication.
-func IsDockerImgReachable(target, registryURL, user, pass string) (bool, error) {
+// IsDockerImgReachable returns wether the input Docker image exists
+// in registry. Void user and pass does not produce an error and will
+// interact with registry without authentication.
+func IsDockerImgReachable(target, user, pass string) (bool, error) {
 	ctx := context.Background()
 
-	envCli, err := docker.NewEnvClient()
+	repo, err := parseDockerRepo(target)
 	if err != nil {
 		return false, err
 	}
-	cli := dockerutils.NewClient(envCli)
 
-	// If registry has not been set
-	// do not perform login.
-	if registryURL != "" {
-		err = cli.Login(
-			ctx,
-			registryURL,
-			user,
-			pass,
-		)
+	// Login to registry if necessary
+	var token string
+	if user != "" || pass != "" {
+		c, err := docker.NewEnvClient()
 		if err != nil {
 			return false, err
 		}
-	}
-
-	if err := cli.Pull(ctx, target); err != nil {
-		if strings.Contains(err.Error(), "docker daemon") {
-			// If error is related to comm with Docker daemon,
-			// return err. Otherwise return not reachable.
+		cfg := dockertypes.AuthConfig{
+			Username:      user,
+			Password:      pass,
+			ServerAddress: repo.Registry,
+		}
+		authData, err := c.RegistryLogin(ctx, cfg)
+		if err != nil {
 			return false, err
 		}
+		token = authData.IdentityToken
+	}
+
+	// In order to verify if Docker img exists, we perform
+	// a request to registry API endpoint to get data for
+	// given image and tag.
+	//
+	// This functionality at the moment of this writing is
+	// still not implemented in Docker client, so we have
+	// to contact registry's REST API directly.
+	// Reference: https://github.com/moby/moby/issues/14254
+	tagPath := fmt.Sprintf("/repositories/%s/tags/%s", repo.Img, repo.Tag)
+	authHeader := fmt.Sprintf("JWT %s", token)
+
+	// Try with v2 registry URL
+	v2URL := fmt.Sprintf("https://%s/v2%s", repo.Registry, tagPath)
+	req, err := http.NewRequest(http.MethodGet, v2URL, nil)
+	req.Header.Add("Authorization", authHeader)
+	if err != nil {
+		return false, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err == nil && resp.StatusCode == http.StatusOK {
+		// If we got HTTP 200 response, return true.
+		// Otherwise try with v1 registry URL.
+		return true, nil
+	}
+
+	// Try with v1 registry URL
+	v1URL := fmt.Sprintf("https://%s/v1%s", repo.Registry, tagPath)
+	req, err = http.NewRequest(http.MethodGet, v1URL, nil)
+	req.Header.Add("Authorization", authHeader)
+	if err != nil {
+		return false, err
+	}
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		// If we did not get HTTP response, or
+		// it was not 200 OK, return false.
 		return false, nil
 	}
+
 	return true, nil
+}
+
+type dockerRepo struct {
+	Registry string
+	Img      string // Concat of namespace and image starting with /
+	Tag      string
+}
+
+func parseDockerRepo(repo string) (dockerRepo, error) {
+	tag := "latest"
+	imgParts := strings.Split(repo, ":")
+	if len(imgParts) == 2 && imgParts[1] != "" {
+		tag = imgParts[1]
+	}
+
+	imgWithOutTag := imgParts[0]
+	u, err := url.Parse(fmt.Sprintf("http://%s", imgWithOutTag))
+	if err != nil {
+		return dockerRepo{}, fmt.Errorf("Error parsing Docker repo")
+	}
+
+	return dockerRepo{
+		Registry: u.Host,
+		Img:      u.Path,
+		Tag:      tag,
+	}, nil
 }
 
 // IsGitRepoReachable returns wether the input Git repository is reachable
