@@ -200,15 +200,11 @@ func BuildConfig() (*Config, error) {
 		}
 		c = fileConf
 	}
-	fmt.Printf("Target after conf: %s\n", c.Check.Target)
-	fmt.Printf("AssetType after conf: %s\n", c.Check.AssetType)
 	if err := OverrideConfigFromEnvVars(c); err != nil {
 		return nil, err
 	}
-	fmt.Printf("AssetType after env: %s\n", c.Check.AssetType)
 
 	OverrideConfigFromOptions(c)
-	fmt.Printf("AssetType after opts: %s\n", c.Check.AssetType)
 	return c, nil
 	// NOTE: what happens if there no config file and also no env vars setted?
 }
