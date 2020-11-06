@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,8 +14,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	dockertypes "github.com/docker/docker/api/types"
-	docker "github.com/docker/docker/client"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
 	gitauth "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
@@ -385,30 +382,9 @@ func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bo
 // in registry. Void user and pass does not produce an error and will
 // interact with registry without authentication.
 func IsDockerImgReachable(target, user, pass string) (bool, error) {
-	ctx := context.Background()
-
 	repo, err := parseDockerRepo(target)
 	if err != nil {
 		return false, err
-	}
-
-	// Login to registry if necessary
-	var token string
-	if user != "" || pass != "" {
-		c, err := docker.NewEnvClient()
-		if err != nil {
-			return false, err
-		}
-		cfg := dockertypes.AuthConfig{
-			Username:      user,
-			Password:      pass,
-			ServerAddress: repo.Registry,
-		}
-		authData, err := c.RegistryLogin(ctx, cfg)
-		if err != nil {
-			return false, err
-		}
-		token = authData.IdentityToken
 	}
 
 	// In order to verify if Docker img exists, we perform
@@ -419,30 +395,71 @@ func IsDockerImgReachable(target, user, pass string) (bool, error) {
 	// still not implemented in Docker client, so we have
 	// to contact registry's REST API directly.
 	// Reference: https://github.com/moby/moby/issues/14254
+
+	// Check registry version.
+	regVersion := "v1"
+	resp, err := http.Get(fmt.Sprintf("https://%s/v2/", repo.Registry))
+	if err != nil {
+		return false, err
+	}
+	if versionH, ok := resp.Header["Docker-Distribution-Api-Version"]; ok {
+		if len(versionH) >= 1 && versionH[0] == "registry/2.0" {
+			regVersion = "v2"
+		}
+	}
+
+	regBaseURL := fmt.Sprintf("https://%s/%s", repo.Registry, regVersion)
 	tagPath := fmt.Sprintf("/repositories/%s/tags/%s", repo.Img, repo.Tag)
-	authHeader := fmt.Sprintf("JWT %s", token)
 
-	// Try with v2 registry URL
-	v2URL := fmt.Sprintf("https://%s/v2%s", repo.Registry, tagPath)
-	req, err := http.NewRequest(http.MethodGet, v2URL, nil)
+	// Login if necessary.
+	var token string
+	if user != "" && pass != "" {
+		auth := struct {
+			Username string
+			Password string
+		}{
+			Username: user,
+			Password: pass,
+		}
+		rqBody, err := json.Marshal(auth)
+		if err != nil {
+			return false, err
+		}
+		req, err := http.NewRequest(http.MethodPost,
+			regBaseURL+"/users/login", bytes.NewReader(rqBody))
+		if err != nil {
+			return false, err
+		}
+		req.Header.Add("Content-Type", "application/json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return false, err
+		}
+		defer resp.Body.Close()
+
+		rsBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return false, err
+		}
+		t := struct {
+			Token string
+		}{}
+		err = json.Unmarshal(rsBody, &t)
+		if err != nil {
+			return false, err
+		}
+		token = t.Token
+	}
+
+	// Check if tag exists.
+	req, err := http.NewRequest(http.MethodGet, regBaseURL+tagPath, nil)
 	if err != nil {
 		return false, err
 	}
-	req.Header.Add("Authorization", authHeader)
-	resp, err := http.DefaultClient.Do(req)
-	if err == nil && resp.StatusCode == http.StatusOK {
-		// If we got HTTP 200 response, return true.
-		// Otherwise try with v1 registry URL.
-		return true, nil
+	if token != "" {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 	}
-
-	// Try with v1 registry URL
-	v1URL := fmt.Sprintf("https://%s/v1%s", repo.Registry, tagPath)
-	req, err = http.NewRequest(http.MethodGet, v1URL, nil)
-	if err != nil {
-		return false, err
-	}
-	req.Header.Add("Authorization", authHeader)
 	resp, err = http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		// If we did not get HTTP response, or
