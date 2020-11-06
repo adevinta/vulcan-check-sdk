@@ -200,6 +200,7 @@ func BuildConfig() (*Config, error) {
 		}
 		c = fileConf
 	}
+	fmt.Printf("Target after conf: %s\n", c.Check.Target)
 	fmt.Printf("AssetType after conf: %s\n", c.Check.AssetType)
 	if err := OverrideConfigFromEnvVars(c); err != nil {
 		return nil, err
