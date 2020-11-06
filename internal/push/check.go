@@ -3,6 +3,7 @@ package push
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -98,7 +99,7 @@ func (c *Check) executeChecker() {
 		// running the check can be finalized.
 		c.checker.CleanUp(context.Background(), c.config.Check.Target, c.config.Check.AssetType, c.config.Check.Opts)
 	} else {
-		err = state.ErrAssetUnreachable
+		err = fmt.Errorf("target is not scannable")
 	}
 
 	c.checkState.SetEndTime(time.Now())

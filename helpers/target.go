@@ -269,15 +269,6 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 	var isReachable bool
 	var err error
 
-	// In order to support backward compatibility
-	// we have to support assetType being void.
-	if assetType == "" {
-		assetType, err = detectAssetType(target)
-		if err != nil {
-			return false, err
-		}
-	}
-
 	if (assetType == awsAccType || assetType == dockerImgType ||
 		assetType == gitRepoType) && creds == nil {
 		return false, fmt.Errorf("ServiceCredentials are required")
@@ -303,35 +294,6 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 	}
 
 	return isReachable, err
-}
-
-func detectAssetType(target string) (string, error) {
-	if types.IsAWSARN(target) {
-		return awsAccType, nil
-	}
-	if types.IsDockerImage(target) {
-		return dockerImgType, nil
-	}
-	if types.IsGitRepository(target) {
-		return gitRepoType, nil
-	}
-	if types.IsIP(target) {
-		return ipType, nil
-	}
-	if types.IsCIDR(target) {
-		return ipRangeType, nil
-	}
-	if types.IsWebAddress(target) {
-		return webAddrsType, nil
-	}
-	if types.IsHostname(target) {
-		return hostnameType, nil
-	}
-	if isDomain, _ := types.IsDomainName(target); isDomain {
-		return domainType, nil
-	}
-
-	return "", errors.New("Unable to detect asset type")
 }
 
 // IsHostnameReachable returns wether the
@@ -530,8 +492,5 @@ func IsGitRepoReachable(target, user, pass string) bool {
 		Password: pass,
 	}
 	_, err := rem.List(&git.ListOptions{Auth: auth})
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
