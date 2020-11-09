@@ -241,7 +241,6 @@ func (c *GitCreds) Password() string {
 
 // IsReachable returns wether target is reachable
 // so the check execution can be performed.
-// If asset type is void, it will be inferred from target.
 //
 // ServiceCredentials are required for AWS, Docker and Git types.
 // Constructors for AWS, Docker and Git credentials can be found
@@ -254,7 +253,7 @@ func (c *GitCreds) Password() string {
 //    - WebAddress: HTTP GET request.
 //    - DomainName: NS Lookup checking SOA record.
 //    - AWSAccount: Assume Role.
-//    - DockerImage: Docker pull.
+//    - DockerImage: Check image exists in registry.
 //    - GitRepository: Git ls-remote.
 //
 // This function does not return any output related to the process in order to
@@ -397,6 +396,7 @@ func IsDockerImgReachable(target, user, pass string) (bool, error) {
 	// Reference: https://github.com/moby/moby/issues/14254
 
 	// Check registry version.
+	// Reference: https://docs.docker.com/registry/spec/api/#api-version-check
 	regVersion := "v1"
 	resp, err := http.Get(fmt.Sprintf("https://%s/v2/", repo.Registry))
 	if err != nil {
