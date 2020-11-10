@@ -13,7 +13,7 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/google/go-cmp v0.3.1
-	github.com/kr/pretty v0.1.0
+	github.com/kr/pretty v0.2.1
 	github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee
 	github.com/sirupsen/logrus v1.4.2
 	golang.org/x/crypto v0.0.0-20191202143827-86a70503ff7e // indirect
