@@ -285,33 +285,43 @@ func isAWSAccountID(accID string) bool {
 
 func TestTarget_IsDockerImgReachable(t *testing.T) {
 	testCases := []struct {
-		name   string
-		target string
-		user   string
-		pass   string
-		want   bool
+		name    string
+		target  string
+		user    string
+		pass    string
+		want    bool
+		wantErr bool
 	}{
 		{
-			name:   "Should return true, image is reachable",
-			target: "registry.hub.docker.com/library/hello-world:latest",
-			want:   true,
+			name:    "Should return true, image is reachable",
+			target:  "registry.hub.docker.com/library/hello-world:latest",
+			want:    true,
+			wantErr: false,
 		},
 		{
-			name:   "Should return false, image is NOT reachable",
-			target: "registry.hub.docker.com/library/hello-world:wrongtag",
-			want:   false,
+			name:    "Should return true, image without specified tag is reachable",
+			target:  "registry.hub.docker.com/library/hello-world",
+			want:    true,
+			wantErr: false,
 		},
 		{
-			name:   "Should return false, image is NOT reachable",
-			target: "registry.hub.docker.com/thisissomegiberishaweioanwe/giberishaweoij:latest",
-			want:   false,
+			name:    "Should return false, image with wrong tag is NOT reachable",
+			target:  "registry.hub.docker.com/library/hello-world:wrongtag",
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name:    "Should return false, image is NOT reachable",
+			target:  "registry.hub.docker.com/thisissomegiberishaweioanwe/giberishaweoij:latest",
+			want:    false,
+			wantErr: true,
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			isReachable, err := IsDockerImgReachable(tt.target, tt.user, tt.pass)
-			if err != nil {
+			if err != nil && !tt.wantErr {
 				t.Fatalf("Expected no error but got: %v", err)
 			}
 			if isReachable != tt.want {

@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -377,107 +378,170 @@ func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bo
 		assumeRoleResp.SessionToken), nil
 }
 
-// IsDockerImgReachable returns wether the input Docker image exists
-// in registry. Void user and pass does not produce an error and will
-// interact with registry without authentication.
+// IsDockerImgReachable returns whether the input Docker image exists in the
+// registry. Void user and pass does not produce an error unless a token can be
+// generated without authentication.
+// In order to verify if the Docker image exists, we perform a request to
+// registry API endpoint to get data for given image and tag.
+//
+// This functionality at the moment of this writing is still not
+// implemented in Docker client, so we have to contact registry's REST API
+// directly.  Reference: https://github.com/moby/moby/issues/14254
 func IsDockerImgReachable(target, user, pass string) (bool, error) {
 	repo, err := parseDockerRepo(target)
 	if err != nil {
 		return false, err
 	}
 
-	// In order to verify if Docker img exists, we perform
-	// a request to registry API endpoint to get data for
-	// given image and tag.
-	//
-	// This functionality at the moment of this writing is
-	// still not implemented in Docker client, so we have
-	// to contact registry's REST API directly.
-	// Reference: https://github.com/moby/moby/issues/14254
-
-	// Check registry version.
-	// Reference: https://docs.docker.com/registry/spec/api/#api-version-check
-	regVersion := "v1"
-	resp, err := http.Get(fmt.Sprintf("https://%s/v2/", repo.Registry))
+	token, err := dockerAPIToken(repo, user, pass)
 	if err != nil {
 		return false, err
 	}
-	if versionH, ok := resp.Header["Docker-Distribution-Api-Version"]; ok {
-		if len(versionH) >= 1 && versionH[0] == "registry/2.0" {
-			regVersion = "v2"
-		}
-	}
 
-	regBaseURL := fmt.Sprintf("https://%s/%s", repo.Registry, regVersion)
-	tagPath := fmt.Sprintf("/repositories/%s/tags/%s", repo.Img, repo.Tag)
+	// Check there exist tags for the image.
+	regBase := fmt.Sprintf("https://%s/v2/", repo.Registry)
+	tagPath := fmt.Sprintf("%s%s/%s/%s/", regBase, repo.Img, "tags", "list")
 
-	// Login if necessary.
-	var token string
-	if user != "" && pass != "" {
-		auth := struct {
-			Username string
-			Password string
-		}{
-			Username: user,
-			Password: pass,
-		}
-		rqBody, err := json.Marshal(auth)
-		if err != nil {
-			return false, err
-		}
-		req, err := http.NewRequest(http.MethodPost,
-			regBaseURL+"/users/login", bytes.NewReader(rqBody))
-		if err != nil {
-			return false, err
-		}
-		req.Header.Add("Content-Type", "application/json")
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return false, err
-		}
-		defer resp.Body.Close()
-
-		rsBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return false, err
-		}
-		t := struct {
-			Token string
-		}{}
-		err = json.Unmarshal(rsBody, &t)
-		if err != nil {
-			return false, err
-		}
-		token = t.Token
-	}
-
-	// Check if tag exists.
-	req, err := http.NewRequest(http.MethodGet, regBaseURL+tagPath, nil)
+	req, err := http.NewRequest(http.MethodGet, tagPath, nil)
 	if err != nil {
 		return false, err
 	}
-	if token != "" {
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, err
 	}
-	resp, err = http.DefaultClient.Do(req)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		// If we did not get HTTP response, or
-		// it was not 200 OK, return false.
-		return false, nil
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("unexpected status code while checking Docker image tags: %d", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+
+	// Check that the target specified tag exists for the image.
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	img := struct {
+		Name string
+		Tags []string
+	}{}
+	if err := json.Unmarshal(body, &img); err != nil {
+		return false, err
+	}
+	if img.Name != repo.Img {
+		return false, fmt.Errorf("image differs. want: %v, have: %v", repo.Img, img.Name)
+	}
+	found := false
+	for _, tag := range img.Tags {
+		if tag == repo.Tag {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return false, errors.New("tag does not exist for the image")
 	}
 
 	return true, nil
 }
 
+// dockerAPIToken generates a bearer token for the Docker Registry API (v2).
+// Reference: https://docs.docker.com/registry/spec/api/#api-version-check
+func dockerAPIToken(repo dockerRepo, user, pass string) (string, error) {
+	// Check that the registry API supports version 2.
+	resp, err := http.Get(fmt.Sprintf("https://%s/v2/", repo.Registry))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusUnauthorized {
+		return "", fmt.Errorf("unexpected status code while checking docker registry API version: %d", resp.StatusCode)
+	}
+
+	versionH := resp.Header["Docker-Distribution-Api-Version"]
+	found := false
+	for _, v := range versionH {
+		if v == "registry/2.0" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return "", errors.New("missing or unexpected version header")
+	}
+
+	// Request token to the auth service specified via authenticate header.
+	re, err := regexp.Compile(`Bearer realm="(.+)",service="(.+)"`)
+	if err != nil {
+		return "", err
+	}
+
+	var realm string
+	var service string
+	authH := resp.Header["Www-Authenticate"]
+	found = false
+	for _, v := range authH {
+		matches := re.FindStringSubmatch(v)
+		if len(matches) == 3 {
+			found = true
+			realm = matches[1]
+			service = matches[2]
+			break
+		}
+	}
+	if !found {
+		return "", errors.New("missing or unexpected authentication header")
+	}
+
+	req, err := http.NewRequest("GET", realm, nil)
+	if err != nil {
+		return "", err
+	}
+
+	q := req.URL.Query()
+	q.Add("service", service)
+	q.Add("scope", fmt.Sprintf("repository:%s:pull", repo.Img))
+	req.URL.RawQuery = q.Encode()
+
+	if user != "" && pass != "" {
+		req.SetBasicAuth(user, pass)
+	}
+
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	t := struct {
+		Token string
+	}{}
+	if err := json.Unmarshal(body, &t); err != nil {
+		return "", err
+	}
+
+	return t.Token, nil
+}
+
 type dockerRepo struct {
 	Registry string
-	Img      string // Concat of namespace and image starting with /
+	Img      string
 	Tag      string
 }
 
 func parseDockerRepo(repo string) (dockerRepo, error) {
+	// NOTE(julianvilas): Defaulting to latest opens the door to scan images
+	// without tags.
 	tag := "latest"
+
 	imgParts := strings.Split(repo, ":")
 	if len(imgParts) == 2 && imgParts[1] != "" {
 		tag = imgParts[1]
@@ -491,7 +555,7 @@ func parseDockerRepo(repo string) (dockerRepo, error) {
 
 	return dockerRepo{
 		Registry: u.Host,
-		Img:      u.Path,
+		Img:      strings.TrimPrefix(u.Path, "/"),
 		Tag:      tag,
 	}, nil
 }
