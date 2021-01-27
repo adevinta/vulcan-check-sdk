@@ -379,14 +379,14 @@ func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bo
 }
 
 // IsDockerImgReachable returns whether the input Docker image exists in the
-// registry. Void user and pass does not produce an error unless a token can be
-// generated without authentication.
-// In order to verify if the Docker image exists, we perform a request to
-// registry API endpoint to get data for given image and tag.
+// registry. Void user and pass does not produce an error as long as a token
+// can be generated without authentication.
 //
-// This functionality at the moment of this writing is still not
-// implemented in Docker client, so we have to contact registry's REST API
-// directly.  Reference: https://github.com/moby/moby/issues/14254
+// In order to verify if the Docker image exists, we perform a request to
+// registry API endpoint to get data for given image and tag.  This
+// functionality at the moment of this writing is still not implemented in
+// Docker client, so we have to contact registry's REST API directly.
+// Reference: https://github.com/moby/moby/issues/14254
 func IsDockerImgReachable(target, user, pass string) (bool, error) {
 	repo, err := parseDockerRepo(target)
 	if err != nil {
