@@ -341,7 +341,7 @@ func TestTarget_parseDockerRepo(t *testing.T) {
 			repo: "registry.hub.docker.com/library/hello-world:latest",
 			want: dockerRepo{
 				Registry: "registry.hub.docker.com",
-				Img:      "/library/hello-world",
+				Img:      "library/hello-world",
 				Tag:      "latest",
 			},
 		},
@@ -349,7 +349,7 @@ func TestTarget_parseDockerRepo(t *testing.T) {
 			repo: "artifactory.company.com/project/img_alpine:3.10.1",
 			want: dockerRepo{
 				Registry: "artifactory.company.com",
-				Img:      "/project/img_alpine",
+				Img:      "project/img_alpine",
 				Tag:      "3.10.1",
 			},
 		},
