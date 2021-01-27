@@ -399,10 +399,9 @@ func IsDockerImgReachable(target, user, pass string) (bool, error) {
 	}
 
 	// Check there exist tags for the image.
-	regBase := fmt.Sprintf("https://%s/v2/", repo.Registry)
-	tagPath := fmt.Sprintf("%s%s/%s/%s/", regBase, repo.Img, "tags", "list")
+	tagEndpoint := fmt.Sprintf("https://%s/v2/%s/tags/list/", repo.Registry, repo.Img)
 
-	req, err := http.NewRequest(http.MethodGet, tagPath, nil)
+	req, err := http.NewRequest(http.MethodGet, tagEndpoint, nil)
 	if err != nil {
 		return false, err
 	}
