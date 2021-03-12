@@ -1,3 +1,7 @@
+/*
+Copyright 2021 Adevinta
+*/
+
 // Package command provides helpers to execute process and parse the output.
 package command
 

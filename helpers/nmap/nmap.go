@@ -1,3 +1,7 @@
+/*
+Copyright 2021 Adevinta
+*/
+
 package nmap
 
 //Check runs nmap and proceses the output
