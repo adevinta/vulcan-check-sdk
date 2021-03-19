@@ -5,10 +5,10 @@ Copyright 2019 Adevinta
 package rest
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
-	"sync"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/resty.v1"
@@ -21,19 +21,23 @@ const (
 	agentURLBase            = "check"
 )
 
-// RestPusherConfig holds the configuration needed by a RestPusher to send push notifications to the agent
-type RestPusherConfig struct {
+// ErrSendMessage is returned by the ShutDown function when there were any error
+// trying to send a message to the agent.
+var ErrSendMessage = errors.New("error sending message to the agent")
+
+// PusherConfig holds the configuration needed by a RestPusher to send push notifications to the agent
+type PusherConfig struct {
 	AgentAddr string `toml:"AgentEndpoint"`
 	BufferLen int    `toml:"BufferLen"`
 }
 
-// RestPusher communicate state changes to agent by performing http calls
-type RestPusher struct {
+// Pusher communicate state changes to agent by performing http calls
+type Pusher struct {
 	logger     *log.Entry
 	c          *resty.Client
 	checkID    string
 	msgsToSend chan pusherMsg
-	finished   *sync.WaitGroup
+	finished   chan error
 }
 type pusherMsg struct {
 	id  string
@@ -45,7 +49,7 @@ type pusherMsg struct {
 // doesn't return any kind of error, that's because a Pusher is expected to handle
 // error in sending push messages by it's own. WARN: Calling this method after calling ShutDown
 // method will cause the program to panic.
-func (p *RestPusher) UpdateState(state interface{}) {
+func (p *Pusher) UpdateState(state interface{}) {
 	l := p.logger.WithField("msg", state)
 	l.Debug("Queuing message to be sent to the agent.")
 	select {
@@ -58,20 +62,21 @@ func (p *RestPusher) UpdateState(state interface{}) {
 }
 
 // Shutdown signals the pusher to stop accepting messages and wait for the pending messages to be send.
-func (p *RestPusher) Shutdown() {
+func (p *Pusher) Shutdown() error {
 	// Closing the pusher channel forces the pusher goroutine to send pending messages
-	// and exit
+	// and exit.
 	p.logger.Debug("Shutdown")
 	close(p.msgsToSend)
-	//Wait for pusher and queuer to finish
-	p.finished.Wait()
+	// Wait for pusher and queuer to finish.
+	err := <-p.finished
 	p.logger.Debug("Shutdown end")
+	return err
 }
 
-// NewRestPusher Creates a new push component that can be used to inform the agent state changes
+// NewPusher Creates a new push component that can be used to inform the agent state changes
 // of the check by using http rest calls.
-func NewRestPusher(config RestPusherConfig, checkID string, logger *log.Entry) *RestPusher {
-	logger.WithFields(log.Fields{"config": config, checkID: checkID}).Debug("Creating NewRestPusher with params")
+func NewPusher(config PusherConfig, checkID string, logger *log.Entry) *Pusher {
+	logger.WithFields(log.Fields{"config": config, checkID: checkID}).Debug("Creating new Pusher with params")
 	hostURL := url.URL{
 		Host:   config.AgentAddr,
 		Scheme: agentURLScheme,
@@ -84,53 +89,49 @@ func NewRestPusher(config RestPusherConfig, checkID string, logger *log.Entry) *
 	if config.BufferLen == 0 {
 		config.BufferLen = defaultPushMsgBufferLen
 	}
-	r := &RestPusher{
+	r := &Pusher{
 		c:          client,
 		checkID:    checkID,
 		msgsToSend: make(chan pusherMsg, config.BufferLen),
 		logger:     logger,
-		finished:   &sync.WaitGroup{},
+		finished:   make(chan error, 1),
 	}
 	// The wg only has to monitor pusher state
-	r.finished.Add(1)
 	goPusher(r.msgsToSend, client, logger.WithField("subcomponent", "gopusher"), r.finished)
 	logger.Debug("Creating NewRestPusher created")
 	return r
 }
 
-/* Pusher loops over buffered channel. Range only exits when the channel
-is closed. */
-func goPusher(c chan pusherMsg, client *resty.Client, l *log.Entry, wg *sync.WaitGroup) {
+// Pusher loops over buffered channel. Range only exits when the channel is
+// closed.
+func goPusher(c chan pusherMsg, client *resty.Client, l *log.Entry, done chan<- error) {
 	go func() {
-		// NOTE: race condition found #2
-		// NOTE: race condition found #3
+		var err error
 		l.Debug("goPusher running")
-		defer wg.Done()
+		defer func() { done <- err }()
 		for msg := range c {
 			l.WithField("msg", msg.msg).Debug("Sending message")
-			sendPushMsg(msg.msg, msg.id, client, l.WithField("sendPushMsg", ""))
+			err = sendPushMsg(msg.msg, msg.id, client, l.WithField("sendPushMsg", ""))
+			// We don't stop reading from the channel intentionally even if there is
+			// an error because we want to still try to send other messages to the agent
+			// even knowing the check would we FAILED.
 		}
 	}()
 }
 
-func sendPushMsg(msg interface{}, id string, c *resty.Client, l *log.Entry) {
+func sendPushMsg(msg interface{}, id string, c *resty.Client, l *log.Entry) error {
 	r := c.R()
 	r.SetBody(msg)
 	resp, err := r.Patch(id)
 	if err != nil {
-		l.WithError(err).Error("Error sending message to agent")
-		retry()
-		return
+		l.WithError(err).Error("sending message to the agent")
+		return fmt.Errorf("%w, %s", ErrSendMessage, err)
 	}
 	if resp.StatusCode() != http.StatusOK {
-		err = fmt.Errorf("Error while sending msg to agent, received status %s, expected 200", resp.Status())
-		l.WithError(err).Error("Error sending message to agent")
-		retry()
-		return
+		err = fmt.Errorf("%w, received status %s, expected 200", ErrSendMessage, resp.Status())
+		l.Error(err)
+		return err
 	}
 	l.WithField("msg", msg).Debug("Message sent to the agent")
-}
-
-func retry() {
-	// NOTE: Consider implementing retries and circuit breaking
+	return nil
 }

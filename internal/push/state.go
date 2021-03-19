@@ -15,7 +15,7 @@ import (
 // by the PushState. This is usefull to write unit tests because makes mocking dependencies of this component easier.
 type StatePusher interface {
 	UpdateState(state interface{})
-	Shutdown()
+	Shutdown() error
 }
 
 // State implements a state that uses a pusher to send state changes to an agent. This implementation is  NOT SYNCHRONIZED, that is not
@@ -104,8 +104,8 @@ func (p *State) SetStatusInconclusive() {
 
 // Shutdown the state gracefully.
 func (p *State) Shutdown() error {
-	p.pusher.Shutdown()
-	return nil
+	err := p.pusher.Shutdown()
+	return err
 }
 
 // newState creates a new synchronized State.

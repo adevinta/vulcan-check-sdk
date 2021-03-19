@@ -60,12 +60,12 @@ type LogConfig struct {
 
 // Config holds all values regarding configuration.
 type Config struct {
-	Check           CheckConfig           `toml:"Check"`
-	Log             LogConfig             `toml:"Log"`
-	CommMode        string                `toml:"CommMode"`
-	Push            rest.RestPusherConfig `toml:"Push"`
-	AllowPrivateIPs *bool                 `toml:"AllowPrivateIps"`
-	RequiredVars    map[string]string     `toml:"RequiredVars"`
+	Check           CheckConfig       `toml:"Check"`
+	Log             LogConfig         `toml:"Log"`
+	CommMode        string            `toml:"CommMode"`
+	Push            rest.PusherConfig `toml:"Push"`
+	AllowPrivateIPs *bool             `toml:"AllowPrivateIps"`
+	RequiredVars    map[string]string `toml:"RequiredVars"`
 }
 
 type optionsLogConfig struct {

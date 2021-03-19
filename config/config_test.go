@@ -56,7 +56,7 @@ func TestOverrideConfigFromEnvVars(t *testing.T) {
 					CheckTypeVersion: "1",
 				},
 				CommMode: "push",
-				Push: rest.RestPusherConfig{
+				Push: rest.PusherConfig{
 					AgentAddr: "endpoint",
 					BufferLen: 11,
 				},
@@ -120,7 +120,7 @@ func TestOverrideConfigFromOpts(t *testing.T) {
 					CheckTypeVersion: "1",
 				},
 				CommMode: "push",
-				Push: rest.RestPusherConfig{
+				Push: rest.PusherConfig{
 					AgentAddr: "endpoint",
 					BufferLen: 11,
 				},
@@ -191,7 +191,7 @@ func TestLoadConfigFromFile(t *testing.T) {
 					CheckTypeVersion: "2",
 				},
 
-				Push: rest.RestPusherConfig{
+				Push: rest.PusherConfig{
 					AgentAddr: "http://agent:8080",
 					BufferLen: 10,
 				},

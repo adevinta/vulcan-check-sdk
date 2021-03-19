@@ -6,6 +6,7 @@ package rest
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -17,9 +18,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func buildMockAgentRestAPI(checkID string) (*httptest.Server, *[]testPushMessage) {
-	msgs := &[]testPushMessage{}
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func checkIDAccMsgsHandler(checkID string) mockHandler {
+	h := func(w http.ResponseWriter, r *http.Request, msgs *[]testPushMessage) {
 		//check the id
 		parts := strings.Split(r.URL.Path, "/")
 		if len(parts) < 2 {
@@ -39,20 +39,32 @@ func buildMockAgentRestAPI(checkID string) (*httptest.Server, *[]testPushMessage
 		}
 		*msgs = append(*msgs, *msg)
 		w.WriteHeader(http.StatusOK)
+	}
+	return h
+}
 
+type mockHandler func(w http.ResponseWriter, r *http.Request, msgs *[]testPushMessage)
+
+func buildMockWithHandler(handler mockHandler) (*httptest.Server, *[]testPushMessage) {
+	msgs := &[]testPushMessage{}
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler(w, r, msgs)
 	})
 	return httptest.NewServer(h), msgs
 }
 
 type updateStateTest struct {
-	name string
-	args updateStateTestArgs
-	want []testPushMessage
+	name      string
+	args      updateStateTestArgs
+	want      []testPushMessage
+	wantError error
 }
 type updateStateTestArgs struct {
 	messages []testPushMessage
 	checkID  string
+	handler  mockHandler
 }
+
 type testPushMessage struct {
 	Progress *float32
 	Report   interface{}
@@ -65,40 +77,61 @@ func TestUpdateState(t *testing.T) {
 			name: "HappyPath",
 			args: updateStateTestArgs{
 				messages: []testPushMessage{
-					testPushMessage{
+					{
 						Progress: &(&struct{ x float32 }{0}).x,
 						Report:   nil,
 						Status:   &(&struct{ p string }{"RUNNING"}).p,
 					},
 				},
 				checkID: "id",
+				handler: checkIDAccMsgsHandler("id"),
 			},
 			want: []testPushMessage{
-				testPushMessage{
+				{
 					Progress: &(&struct{ x float32 }{0}).x,
 					Report:   nil,
 					Status:   &(&struct{ p string }{"RUNNING"}).p,
 				},
 			},
 		},
+		{
+			name: "ShutdownsErrorWhenUnableToSendMsg",
+			args: updateStateTestArgs{
+				messages: []testPushMessage{
+					{
+						Progress: &(&struct{ x float32 }{0}).x,
+						Report:   nil,
+						Status:   &(&struct{ p string }{"RUNNING"}).p,
+					},
+				},
+				checkID: "id",
+				handler: func(w http.ResponseWriter, r *http.Request, msgs *[]testPushMessage) {
+					w.WriteHeader(http.StatusBadRequest)
+				},
+			},
+			wantError: ErrSendMessage,
+			want:      []testPushMessage{},
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
-
-		srv, gotMsgs := buildMockAgentRestAPI(tt.args.checkID)
+		srv, gotMsgs := buildMockWithHandler(tt.args.handler)
 		agentAddress, err := url.Parse(srv.URL)
 		if err != nil {
 			t.Error(err)
 		}
-		c := RestPusherConfig{
+		c := PusherConfig{
 			AgentAddr: agentAddress.Hostname() + ":" + agentAddress.Port(),
 		}
 		l := log.New()
-		l.Level = log.DebugLevel
-		p := NewRestPusher(c, tt.args.checkID, l.WithField("test", tt.name))
+		l.Level = log.ErrorLevel
+		p := NewPusher(c, tt.args.checkID, l.WithField("test", tt.name))
 		sendPushMessages(tt.args.messages, p)
-		p.Shutdown()
+		err = p.Shutdown()
 		srv.Close()
+		if !errors.Is(err, tt.wantError) {
+			t.Errorf("error!=wantError, %+v!=%+v", err, tt.wantError)
+		}
 		equals, want, got := comparePushMessages(*gotMsgs, tt.want)
 		if !equals {
 			t.Errorf("Error in test %s. \nWant: %s Got: %s.\n diffs %+v", tt.name, pretty.Sprint(want), pretty.Sprint(got), pretty.Diff(want, got))
@@ -125,7 +158,7 @@ func comparePushMessages(got []testPushMessage, want []testPushMessage) (equal b
 	return
 }
 
-func sendPushMessages(messages []testPushMessage, pusher *RestPusher) {
+func sendPushMessages(messages []testPushMessage, pusher *Pusher) {
 	for _, m := range messages {
 		pusher.UpdateState(m)
 	}
