@@ -88,7 +88,6 @@ func (c *Check) RunAndServe() {
 		// in any case we panic.
 		panic(err)
 	}
-	return
 }
 
 func (c *Check) executeChecker() {
@@ -149,11 +148,11 @@ func NewCheckWithConfig(name string, checker Checker, logger *log.Entry, conf *c
 	}
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	pushLogger := logging.BuildRootLogWithNameAndConfig("sdk.restPusher", conf, name)
-	pussher := rest.NewPusher(conf.Push, conf.Check.CheckID, pushLogger)
+	pusher := rest.NewPusher(conf.Push, conf.Check.CheckID, pushLogger)
 	r := agent.NewReportFromConfig(conf.Check)
 	stateLogger := logging.BuildRootLogWithNameAndConfig("sdk.pushState", conf, name)
 	agentState := agent.State{Report: r}
-	c.checkState = newState(agentState, pussher, stateLogger)
+	c.checkState = newState(agentState, pusher, stateLogger)
 	c.api = newPushAPI(logger, c)
 	// Initialize a sync point for goroutines to wait for the checker run method
 	// to be finished, for instance a call to an abort method should wait in this sync point.

@@ -104,17 +104,17 @@ func NewPusher(config PusherConfig, checkID string, logger *log.Entry) *Pusher {
 
 // Pusher loops over buffered channel. Range only exits when the channel is
 // closed.
-func goPusher(c chan pusherMsg, client *resty.Client, l *log.Entry, done chan<- error) {
+func goPusher(c chan pusherMsg, client *resty.Client, l *log.Entry, finished chan<- error) {
 	go func() {
 		var err error
 		l.Debug("goPusher running")
-		defer func() { done <- err }()
+		defer func() { finished <- err }()
 		for msg := range c {
 			l.WithField("msg", msg.msg).Debug("Sending message")
 			err = sendPushMsg(msg.msg, msg.id, client, l.WithField("sendPushMsg", ""))
 			// We don't stop reading from the channel intentionally even if there is
 			// an error because we want to still try to send other messages to the agent
-			// even knowing the check would we FAILED.
+			// even knowing the check would be FAILED.
 		}
 	}()
 }
