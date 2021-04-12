@@ -36,7 +36,6 @@ type NmapRunner interface {
 
 type runner struct {
 	params []string
-	timing int
 	state  state.State
 	output []byte
 }
@@ -108,7 +107,6 @@ func NewNmapCheck(target string, s state.State, timing int, options map[string]s
 
 	r := &runner{
 		params: params,
-		timing: timing,
 		state:  s,
 	}
 	return r
