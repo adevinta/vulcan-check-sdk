@@ -82,13 +82,14 @@ func TestRunnerIntegrationTest(t *testing.T) {
 					ProgressReporter: stateMock{},
 				}
 				timing := 0
+				progress := true
 				port := "29070"
 				ln, err := listenOnTCPPort(port)
 				if err != nil {
 					return nil, nil, err
 				}
 
-				runner = NewNmapTCPCheck("localhost", s, timing, []string{port})
+				runner = NewNmapTCPCheck("localhost", s, timing, progress, []string{port})
 				tearDown = func() (innerError error) {
 					return (ln.Close())
 				}
@@ -105,6 +106,7 @@ func TestRunnerIntegrationTest(t *testing.T) {
 					ProgressReporter: stateMock{},
 				}
 				timing := 0
+				progress := true
 				port := "29070"
 				options := map[string]string{
 					"-p":  port,
@@ -114,7 +116,7 @@ func TestRunnerIntegrationTest(t *testing.T) {
 				if err != nil {
 					return nil, nil, err
 				}
-				runner = NewNmapCheck("localhost", s, timing, options)
+				runner = NewNmapCheck("localhost", s, timing, progress, options)
 				tearDown = func() (innerError error) {
 					return (ln.Close())
 				}
@@ -131,12 +133,13 @@ func TestRunnerIntegrationTest(t *testing.T) {
 					ProgressReporter: stateMock{},
 				}
 				timing := 0
+				progress := true
 				port := "29070"
 				ln, err := listenOnUDPPort(port)
 				if err != nil {
 					return nil, nil, err
 				}
-				runner = NewNmapUDPCheck("localhost", s, timing, []string{port})
+				runner = NewNmapUDPCheck("localhost", s, timing, progress, []string{port})
 				tearDown = func() (innerError error) {
 					return (ln.Close())
 				}
@@ -217,7 +220,8 @@ func TestProcessOutputChunk(t *testing.T) {
 	}
 	timing := 0
 	port := "29070"
-	r := NewNmapTCPCheck("localhost", s, timing, []string{port})
+	progress := true
+	r := NewNmapTCPCheck("localhost", s, timing, progress, []string{port})
 
 	chunk := []byte(`<taskprogress percent="05" \/><taskprogress a percent="15" b\/><taskprogress c percent="25" d\/>`)
 	bInfo := r.(check.ProcessChecker).ProcessOutputChunk(chunk)
