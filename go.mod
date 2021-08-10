@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/adevinta/vulcan-report v0.0.0-20210608141555-94465cb70da6
+	github.com/adevinta/vulcan-report v0.0.0-20210810073843-6daabc8efe16
 	github.com/adevinta/vulcan-types v0.0.0-20200922093209-437fd6d5ab11
 	github.com/aws/aws-sdk-go v1.35.15
 	github.com/google/go-cmp v0.3.1
