@@ -244,7 +244,7 @@ func (c *GitCreds) Password() string {
 	return c.Pass
 }
 
-// IsReachable returns wether target is reachable
+// IsReachable returns whether target is reachable
 // so the check execution can be performed.
 //
 // ServiceCredentials are required for AWS, Docker and Git types.
@@ -297,7 +297,7 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 	return isReachable, err
 }
 
-// IsHostnameReachable returns wether the
+// IsHostnameReachable returns whether the
 // input hostname target can be resolved.
 func IsHostnameReachable(target string) bool {
 	_, err := net.LookupHost(target)
@@ -309,7 +309,7 @@ func IsHostnameReachable(target string) bool {
 	return true
 }
 
-// IsWebAddrsReachable returns wether the
+// IsWebAddrsReachable returns whether the
 // input web address accepts HTTP requests.
 func IsWebAddrsReachable(target string) bool {
 	_, err := http.Get(target)
@@ -319,14 +319,14 @@ func IsWebAddrsReachable(target string) bool {
 	return true
 }
 
-// IsDomainReachable returns wether the input target
+// IsDomainReachable returns whether the input target
 // is a reachable Domain Name. The criteria to determine
 // a target as a Domain is the existence of a SOA record.
 func IsDomainReachable(target string) (bool, error) {
 	return types.IsDomainName(target)
 }
 
-// IsAWSAccReachable returns wether the AWS account associated with the input ARN
+// IsAWSAccReachable returns whether the AWS account associated with the input ARN
 // allows to assume role with the given params through the vulcan-assume-role service.
 // If role is assumed correctly for the given account, STS credentials are returned.
 func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bool, *credentials.Credentials, error) {
@@ -563,7 +563,7 @@ func parseDockerRepo(repo string) (dockerRepo, error) {
 	}, nil
 }
 
-// IsGitRepoReachable returns wether the input Git repository is reachable
+// IsGitRepoReachable returns whether the input Git repository is reachable
 // by performing a ls-remote.
 // If no authentication is required, user and pass parameters can be void.
 func IsGitRepoReachable(target, user, pass string) bool {
