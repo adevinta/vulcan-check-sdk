@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/adevinta/vulcan-check-sdk/state"
 	git "gopkg.in/src-d/go-git.v4"
@@ -18,12 +19,13 @@ const (
 	gheTokenVar    = "GITHUB_ENTERPRISE_TOKEN"
 )
 
-// CloneGitRepository clones a Git repository into a temporary directory and returns the path or an error.
-func CloneGitRepository(target string, branch string, depth int) (string, error) {
+// CloneGitRepository clones a Git repository into a temporary directory and returns the path and branch name.
+// If a branch is not specified, the default branch will be used and its name will be returned.
+func CloneGitRepository(target string, branch string, depth int) (string, string, error) {
 	// Check if the target repository is on Github Enterprise and return populated credentials if necessary.
 	auth, err := gheAuth(target)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	// Check that the repository is accessible with those credentials.
@@ -32,16 +34,16 @@ func CloneGitRepository(target string, branch string, depth int) (string, error)
 		Pass: auth.Password,
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if !isReachable {
-		return "", state.ErrAssetUnreachable
+		return "", "", state.ErrAssetUnreachable
 	}
 
 	// Create a non-bare clone of the target repository referencing the provided branch.
 	repoPath, err := os.MkdirTemp(os.TempDir(), repoPathPrefix)
 	if err != nil {
-		return "", fmt.Errorf("error creating directory for repository: %w", err)
+		return "", "", fmt.Errorf("error creating directory for repository: %w", err)
 	}
 	cloneOptions := git.CloneOptions{
 		URL:   target,
@@ -53,16 +55,18 @@ func CloneGitRepository(target string, branch string, depth int) (string, error)
 	}
 	repo, err := git.PlainClone(repoPath, false, &cloneOptions)
 	if err != nil {
-		return "", fmt.Errorf("error cloning the repository: %w", err)
+		return "", "", fmt.Errorf("error cloning the repository: %w", err)
 	}
 
 	// Check that the target branch exists.
-	_, err = repo.Head()
+	branchRef, err := repo.Head()
 	if err != nil {
-		return "", fmt.Errorf("error retrieving the branch: %w", err)
+		return "", "", fmt.Errorf("error retrieving the branch: %w", err)
 	}
 
-	return repoPath, nil
+	branchName := strings.TrimPrefix(string(branchRef.Name()), "refs/heads/")
+
+	return repoPath, branchName, nil
 }
 
 // gheAuth returns Github Enterprise credentials for the target repository, empty credentials or an error.
@@ -87,4 +91,9 @@ func gheAuth(target string) (*http.BasicAuth, error) {
 	}
 
 	return &http.BasicAuth{}, nil
+}
+
+// GenerateGithubURL returns a URL poiting to a line of a file on a specific branch in the Github web application.
+func GenerateGithubURL(target string, branch string, file string, line int) string {
+	return fmt.Sprintf("%s/blob/%s/%s#%v", target, branch, file, line)
 }
