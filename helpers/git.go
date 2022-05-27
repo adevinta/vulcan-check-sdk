@@ -45,7 +45,7 @@ func CloneGitRepository(target string, branch string, depth int) (string, error)
 	cloneOptions := git.CloneOptions{
 		URL:   target,
 		Auth:  auth,
-		Depth: opt.Depth,
+		Depth: depth,
 	}
 	if branch != "" {
 		cloneOptions.ReferenceName = plumbing.ReferenceName(path.Join("refs/heads", branch))
