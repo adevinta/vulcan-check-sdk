@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/adevinta/vulcan-check-sdk/state"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
@@ -19,13 +20,13 @@ const (
 
 // CloneGitRepository clones a Git repository into a temporary directory and returns the path or an error.
 func CloneGitRepository(target string, branch string, depth int) (string, error) {
-	// Check if the repository is on Github Enterprise and return populated credentials if necessary.
+	// Check if the target repository is on Github Enterprise and return populated credentials if necessary.
 	auth, err := gheAuth(target)
 	if err != nil {
 		return "", err
 	}
 
-	// Check that repository is accessible with those credentials.
+	// Check that the repository is accessible with those credentials.
 	isReachable, err := IsReachable(target, gitRepoType, &GitCreds{
 		User: auth.Username,
 		Pass: auth.Password,
@@ -34,7 +35,7 @@ func CloneGitRepository(target string, branch string, depth int) (string, error)
 		return "", err
 	}
 	if !isReachable {
-		return "", checkstate.ErrAssetUnreachable
+		return "", state.ErrAssetUnreachable
 	}
 
 	// Create a non-bare clone of the target repository referencing the provided branch.
@@ -56,7 +57,7 @@ func CloneGitRepository(target string, branch string, depth int) (string, error)
 	}
 
 	// Check that the target branch exists.
-	_, err := repo.Head()
+	_, err = repo.Head()
 	if err != nil {
 		return "", fmt.Errorf("error retrieving the branch: %w", err)
 	}
@@ -66,15 +67,19 @@ func CloneGitRepository(target string, branch string, depth int) (string, error)
 
 // gheAuth returns Github Enterprise credentials for the target repository, empty credentials or an error.
 func gheAuth(target string) (*http.BasicAuth, error) {
+	targetURL, err := url.Parse(target)
+	if err != nil {
+		return &http.BasicAuth{}, fmt.Errorf("error parsing \"%s\" as a URL: %w", target, err)
+	}
+
 	endpoint := os.Getenv(gheEndpointVar)
 	gheURL, err := url.Parse(endpoint)
 	if err != nil {
-		return &GitCreds{}, fmt.Errorf("error parsing \"%s\" as a Github Enterprise endpoint: %w", endpoint, err)
+		return &http.BasicAuth{}, fmt.Errorf("error parsing \"%s\" as a URL: %w", endpoint, err)
 	}
 
-	var auth *http.BasicAuth
 	// If Github Enterprise credentials are set, use them if target is on the same Github Enterprise.
-	if gheURL.Host != "" && target.Host == gheURL.Host {
+	if gheURL.Host != "" && targetURL.Host == gheURL.Host {
 		return &http.BasicAuth{
 			Username: "username", // Can be anything except blank.
 			Password: os.Getenv(gheTokenVar),
