@@ -95,5 +95,5 @@ func gheAuth(target string) (*http.BasicAuth, error) {
 
 // GenerateGithubURL returns a URL poiting to a line of a file on a specific branch in the Github web application.
 func GenerateGithubURL(target string, branch string, file string, line int) string {
-	return fmt.Sprintf("%s/%s#%v", target, path.Join(branch, "blob", file), line)
+	return fmt.Sprintf("%s/%s#%v", target, path.Join("blob", branch, file), line)
 }
