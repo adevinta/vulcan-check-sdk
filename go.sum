@@ -2,8 +2,6 @@ github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/adevinta/vulcan-report v0.0.0-20210830131559-d13f81ad6b01 h1:7IzVXFwIQXTjLZxYci5yLxNIzYHIIKb8MxrcHtIJV3o=
 github.com/adevinta/vulcan-report v0.0.0-20210830131559-d13f81ad6b01/go.mod h1:mj4gaLILjExwR6TV0zCyoSqNFaPBaGI9ngZwiOdPtA0=
-github.com/adevinta/vulcan-types v0.0.0-20211011153447-1b4d6804c22e h1:w6DYSNJF/fjq4+rIiqTw2Z9Knw1TG8/7RaRtYEyOGuU=
-github.com/adevinta/vulcan-types v0.0.0-20211011153447-1b4d6804c22e/go.mod h1:IXrsSLYBsjae65TrMgE9yTbtaHRMjJUkZhPAQJIWXQM=
 github.com/adevinta/vulcan-types v0.0.0-20220310133120-53f000e5196f h1:r843CAEghseSW+942cV0AyK34yKR0rynxrmROrb/D/U=
 github.com/adevinta/vulcan-types v0.0.0-20220310133120-53f000e5196f/go.mod h1:IXrsSLYBsjae65TrMgE9yTbtaHRMjJUkZhPAQJIWXQM=
 github.com/alcortesm/tgz v0.0.0-20161220082320-9c5fe88206d7 h1:uSoVVbwJiQipAclBbw+8quDsfcvFjOpI5iCf4p/cqCs=
@@ -23,7 +21,6 @@ github.com/docker/distribution v2.7.1+incompatible h1:a5mlkVzth6W5A4fOsS3D2EO5BU
 github.com/docker/distribution v2.7.1+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
 github.com/emirpasic/gods v1.12.0 h1:QAUIPSaCu4G+POclxeqb3F+WPpdKqFGlw36+yOzGlrg=
 github.com/emirpasic/gods v1.12.0/go.mod h1:YfzfFFoVP/catgzJb4IKIqXjX78Ha8FMSDh3ymbK86o=
-github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568 h1:BHsljHzVlRcyQhjrss6TZTdY2VfCqZPbv5k3iBFa2ZQ=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/gliderlabs/ssh v0.2.2 h1:6zsha5zo/TWhRhwqCD3+EarCAgZ2yN28ipRnGPnwkI0=
 github.com/gliderlabs/ssh v0.2.2/go.mod h1:U7qILu1NlMHj9FlMhZLlkCdDnU1DBEAqr0aevW3Awn0=
