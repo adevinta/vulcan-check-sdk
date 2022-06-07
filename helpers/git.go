@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -14,9 +15,9 @@ import (
 )
 
 const (
-	repoPathPrefix = "vulcan-repo"
-	gheEndpointVar = "GITHUB_ENTERPRISE_ENDPOINT"
-	gheTokenVar    = "GITHUB_ENTERPRISE_TOKEN"
+	repoPathPattern = "vulcan-repo-*"
+	gheEndpointVar  = "GITHUB_ENTERPRISE_ENDPOINT"
+	gheTokenVar     = "GITHUB_ENTERPRISE_TOKEN"
 )
 
 // CloneGitRepository clones a Git repository into a temporary directory and returns the path and branch name.
@@ -41,7 +42,7 @@ func CloneGitRepository(target string, branch string, depth int) (string, string
 	}
 
 	// Create a non-bare clone of the target repository referencing the provided branch.
-	repoPath, err := os.MkdirTemp(os.TempDir(), repoPathPrefix)
+	repoPath, err := ioutil.TempDir(os.TempDir(), repoPathPattern)
 	if err != nil {
 		return "", "", fmt.Errorf("error creating directory for repository: %w", err)
 	}
