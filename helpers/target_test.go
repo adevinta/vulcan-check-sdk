@@ -6,7 +6,7 @@ package helpers
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -155,7 +155,7 @@ func TestTarget_IsAWSAccReachable(t *testing.T) {
 	// Test http handler for granted assume role
 	okHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify payload is correct
-		payload, err := ioutil.ReadAll(r.Body)
+		payload, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -197,7 +197,7 @@ func TestTarget_IsAWSAccReachable(t *testing.T) {
 	// Test http handler for forbidden assume role
 	koHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify payload is correct
-		payload, err := ioutil.ReadAll(r.Body)
+		payload, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return

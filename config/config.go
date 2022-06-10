@@ -7,7 +7,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 
@@ -175,7 +174,7 @@ func overrideConfigCheckEnvVars(c *Config) {
 // LoadConfigFromFile loads configuration file from a path.
 func LoadConfigFromFile(filePath string) (*Config, error) {
 	c := &Config{}
-	configData, err := ioutil.ReadFile(filePath) //nolint
+	configData, err := os.ReadFile(filePath) //nolint
 	if err != nil {
 		return c, err
 	}

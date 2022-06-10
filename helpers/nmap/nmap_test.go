@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
-	"io/ioutil"
 	"net"
 	"os"
 	"testing"
@@ -181,7 +180,7 @@ func TestRunnerIntegrationTest(t *testing.T) {
 						t.Fatalf("Error writing golden file %v", errGF)
 					}
 				}
-				contents, errRF := ioutil.ReadFile(tt.goldenPath)
+				contents, errRF := os.ReadFile(tt.goldenPath)
 				if errRF != nil {
 					t.Fatal(errRF)
 				}
@@ -245,6 +244,6 @@ func writeGoldenFile(v interface{}, filePath string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filePath, bytes, 0644)
+	err = os.WriteFile(filePath, bytes, 0644)
 	return err
 }

@@ -9,13 +9,12 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/adevinta/vulcan-check-sdk/internal/logging"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -81,7 +80,7 @@ func (p *ProcessCheck) Run(ctx context.Context) (pState *os.ProcessState, err er
 	if err != nil {
 		p.logger.WithError(err).Error("Error starting process")
 	}
-	stderr, err := ioutil.ReadAll(p.stderr)
+	stderr, err := io.ReadAll(p.stderr)
 	if err != nil {
 		p.logger.WithError(err).Error("Error reading from process stderr")
 	} else {

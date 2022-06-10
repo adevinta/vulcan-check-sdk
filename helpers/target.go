@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -367,7 +367,7 @@ func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bo
 		SecretAccessKey string `json:"secret_access_key"`
 		SessionToken    string `json:"session_token"`
 	}{}
-	buf, err := ioutil.ReadAll(resp.Body)
+	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return false, nil, err
 	}
@@ -421,7 +421,7 @@ func IsDockerImgReachable(target, user, pass string) (bool, error) {
 	defer resp.Body.Close()
 
 	// Check that the target specified tag exists for the image.
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return false, err
 	}
@@ -519,7 +519,7 @@ func dockerAPIToken(repo dockerRepo, user, pass string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}

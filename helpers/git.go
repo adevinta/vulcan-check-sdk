@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -42,7 +41,7 @@ func CloneGitRepository(target string, branch string, depth int) (string, string
 	}
 
 	// Create a non-bare clone of the target repository referencing the provided branch.
-	repoPath, err := ioutil.TempDir(os.TempDir(), repoPathPattern)
+	repoPath, err := os.MkdirTemp(os.TempDir(), repoPathPattern)
 	if err != nil {
 		return "", "", fmt.Errorf("error creating directory for repository: %w", err)
 	}
