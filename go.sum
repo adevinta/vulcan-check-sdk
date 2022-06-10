@@ -1,7 +1,7 @@
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/adevinta/vulcan-report v1.0.0-rc1 h1:GSPrqMmxw3m4mGKovuusXzFuuKJIwAehit+1Ets5dmo=
-github.com/adevinta/vulcan-report v1.0.0-rc1/go.mod h1:k34KaeoXc3H77WNMwI9F4F1G28hBjB95PeMUp9oHbEE=
+github.com/adevinta/vulcan-report v1.0.0 h1:44aICPZ+4svucgCSA5KmjlT3ZGzrvZXiSnkbnj6AC2k=
+github.com/adevinta/vulcan-report v1.0.0/go.mod h1:k34KaeoXc3H77WNMwI9F4F1G28hBjB95PeMUp9oHbEE=
 github.com/adevinta/vulcan-types v1.0.0 h1:tjt59GA4+USJ0naCoAXFNBbIGXqoF+a21BV6rD8fLXc=
 github.com/adevinta/vulcan-types v1.0.0/go.mod h1:bf/j+YA20WO1IkqlPa5GgXUYdYUAfjOOJ9alsJDQ6t8=
 github.com/alcortesm/tgz v0.0.0-20161220082320-9c5fe88206d7 h1:uSoVVbwJiQipAclBbw+8quDsfcvFjOpI5iCf4p/cqCs=
