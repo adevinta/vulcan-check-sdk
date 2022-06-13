@@ -13,7 +13,6 @@ require (
 	github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee
 	github.com/sirupsen/logrus v1.7.0
 	gopkg.in/resty.v1 v1.12.0
-	gopkg.in/src-d/go-git.v4 v4.13.1
 )
 
 require (
@@ -32,7 +31,6 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
-	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
 	golang.org/x/mod v0.4.2 // indirect
@@ -40,6 +38,5 @@ require (
 	golang.org/x/sys v0.0.0-20220610221304-9f5ed59c137d // indirect
 	golang.org/x/tools v0.1.6-0.20210726203631-07bc1bf47fb2 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

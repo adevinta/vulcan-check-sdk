@@ -19,10 +19,10 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/config"
-	gitauth "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
-	"gopkg.in/src-d/go-git.v4/storage/memory"
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	gitauth "github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/go-git/go-git/v5/storage/memory"
 
 	types "github.com/adevinta/vulcan-types"
 )
