@@ -7,7 +7,6 @@ package push
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -108,7 +107,7 @@ func (c *Check) executeChecker() {
 		// running the check can be finalized.
 		c.checker.CleanUp(context.Background(), c.config.Check.Target, c.config.Check.AssetType, c.config.Check.Opts)
 	} else {
-		err = fmt.Errorf("target is not scannable")
+		err = state.ErrNonPublicAsset
 	}
 
 	c.checkState.SetEndTime(time.Now())
@@ -120,6 +119,9 @@ func (c *Check) executeChecker() {
 			c.checkState.SetStatusAborted()
 		} else if errors.Is(err, state.ErrAssetUnreachable) {
 			log.Info("Check asset is unreachable")
+			c.checkState.SetStatusInconclusive()
+		} else if errors.Is(err, state.ErrNonPublicAsset) {
+			log.Info("Check asset is not public")
 			c.checkState.SetStatusInconclusive()
 		} else {
 			c.Logger.WithError(err).Error("Error running check")

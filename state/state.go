@@ -13,6 +13,8 @@ import (
 var (
 	// ErrAssetUnreachable indicates that the asset to be scanned is not reachable.
 	ErrAssetUnreachable = errors.New("Asset is Unreachable")
+	// ErrNonPublicAsset indicates that the asset is not publicly exposed and therefore won't be scanned.
+	ErrNonPublicAsset = errors.New("Asset is not public")
 )
 
 // State defines the fields and function a check must use to generare a result
