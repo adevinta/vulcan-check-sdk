@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/resty.v1"
@@ -19,6 +20,9 @@ const (
 	backPresureMsg          = "Push queue can't handle the pressure with current size, sdk is pushing back the pressure to the check."
 	agentURLScheme          = "http"
 	agentURLBase            = "check"
+	retryCount              = 3    // Attempts.
+	retryWaitTime           = 100  // Millisecond.
+	retryMaxWaitTime        = 2000 // Millisecond.
 )
 
 // ErrSendMessage is returned by the ShutDown function when there were any error
@@ -85,6 +89,20 @@ func NewPusher(config PusherConfig, checkID string, logger *log.Entry) *Pusher {
 	logger.WithField("agent_url", hostURL.String()).Debug("Setting agent URL end point")
 	client := resty.New()
 	client.SetHostURL(hostURL.String())
+	// Enable resty backoff retry mechanism with a maximum of 3 attempts for
+	// request errors or unexpected HTTP response status codes.
+	client.SetRetryCount(retryCount)
+	client.SetRetryWaitTime(time.Duration(retryWaitTime) * time.Millisecond)
+	client.SetRetryMaxWaitTime(time.Duration(retryMaxWaitTime) * time.Millisecond)
+	client.AddRetryCondition(resty.RetryConditionFunc(func(resp *resty.Response) (bool, error) {
+		if resp.StatusCode() != http.StatusOK {
+			err := fmt.Errorf("%w, received status %s, expected 200", ErrSendMessage, resp.Status())
+			logger.WithField("sendPushMsg", "").Error(err)
+			return true, nil
+		}
+		return false, nil
+	}))
+
 	// Assign a default value to buffer len.
 	if config.BufferLen == 0 {
 		config.BufferLen = defaultPushMsgBufferLen
@@ -128,9 +146,7 @@ func sendPushMsg(msg interface{}, id string, c *resty.Client, l *log.Entry) erro
 		return fmt.Errorf("%w, %s", ErrSendMessage, err)
 	}
 	if resp.StatusCode() != http.StatusOK {
-		err = fmt.Errorf("%w, received status %s, expected 200", ErrSendMessage, resp.Status())
-		l.Error(err)
-		return err
+		return fmt.Errorf("%w, received status %s, expected 200", ErrSendMessage, resp.Status())
 	}
 	l.WithField("msg", msg).Debug("Message sent to the agent")
 	return nil

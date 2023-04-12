@@ -45,9 +45,15 @@ func checkIDAccMsgsHandler(checkID string) mockHandler {
 
 type mockHandler func(w http.ResponseWriter, r *http.Request, msgs *[]testPushMessage)
 
-func buildMockWithHandler(handler mockHandler) (*httptest.Server, *[]testPushMessage) {
+func buildMockWithHandler(handler mockHandler, failures *int) (*httptest.Server, *[]testPushMessage) {
 	msgs := &[]testPushMessage{}
+
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if failures != nil && *failures > 0 {
+			*failures = *failures - 1
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		handler(w, r, msgs)
 	})
 	return httptest.NewServer(h), msgs
@@ -63,6 +69,7 @@ type updateStateTestArgs struct {
 	messages []testPushMessage
 	checkID  string
 	handler  mockHandler
+	failures int
 }
 
 type testPushMessage struct {
@@ -95,6 +102,45 @@ func TestUpdateState(t *testing.T) {
 			},
 		},
 		{
+			name: "SucceedLastAttempt",
+			args: updateStateTestArgs{
+				messages: []testPushMessage{
+					{
+						Progress: &(&struct{ x float32 }{0}).x,
+						Report:   nil,
+						Status:   &(&struct{ p string }{"RUNNING"}).p,
+					},
+				},
+				failures: retryCount - 1,
+				checkID:  "id",
+				handler:  checkIDAccMsgsHandler("id"),
+			},
+			want: []testPushMessage{
+				{
+					Progress: &(&struct{ x float32 }{0}).x,
+					Report:   nil,
+					Status:   &(&struct{ p string }{"RUNNING"}).p,
+				},
+			},
+		},
+		{
+			name: "FailAllAttempts",
+			args: updateStateTestArgs{
+				messages: []testPushMessage{
+					{
+						Progress: &(&struct{ x float32 }{0}).x,
+						Report:   nil,
+						Status:   &(&struct{ p string }{"RUNNING"}).p,
+					},
+				},
+				failures: retryCount,
+				checkID:  "id",
+				handler:  checkIDAccMsgsHandler("id"),
+			},
+			wantError: ErrSendMessage,
+			want:      []testPushMessage{},
+		},
+		{
 			name: "ShutdownsErrorWhenUnableToSendMsg",
 			args: updateStateTestArgs{
 				messages: []testPushMessage{
@@ -115,7 +161,7 @@ func TestUpdateState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		tt := tt
-		srv, gotMsgs := buildMockWithHandler(tt.args.handler)
+		srv, gotMsgs := buildMockWithHandler(tt.args.handler, &tt.args.failures)
 		agentAddress, err := url.Parse(srv.URL)
 		if err != nil {
 			t.Error(err)
