@@ -6,8 +6,6 @@ env:
   global:
   - CGO_ENABLED=0
 go_import_path: github.com/adevinta/vulcan-check-sdk
-before_install:
-  - sudo apt-get install -y nmap
 script:
   - go install -v $(go list ./... | grep -v /vendor/)
   - go test -short -v $(go list ./... | grep -v /vendor/)
