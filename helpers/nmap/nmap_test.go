@@ -70,6 +70,9 @@ func compareOnlyHostsSection(want gonmap.NmapRun, got gonmap.NmapRun) string {
 	return cmp.Diff(want.Hosts, got.Hosts, hostComparerOpts)
 }
 func TestRunnerIntegrationTest(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	initNmapPath()
 	tests := []integrationTest{
 		{
