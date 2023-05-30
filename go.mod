@@ -3,7 +3,7 @@ module github.com/adevinta/vulcan-check-sdk
 go 1.19
 
 require (
-	github.com/BurntSushi/toml v1.2.1
+	github.com/BurntSushi/toml v1.3.0
 	github.com/adevinta/vulcan-report v1.0.0
 	github.com/adevinta/vulcan-types v1.0.1
 	github.com/aws/aws-sdk-go v1.44.244
