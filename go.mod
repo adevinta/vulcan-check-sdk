@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.2.1
 	github.com/adevinta/vulcan-report v1.0.0
 	github.com/adevinta/vulcan-types v1.0.1
-	github.com/aws/aws-sdk-go v1.44.244
+	github.com/aws/aws-sdk-go v1.44.281
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/google/go-cmp v0.5.9
 	github.com/kr/pretty v0.3.1
