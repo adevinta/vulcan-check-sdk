@@ -14,7 +14,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -267,6 +269,10 @@ func (c *GitCreds) Password() string {
 // Assume Role token). For this purpose other individual methods can be called
 // from this same package with further options for AWS, Docker and Git types.
 func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
+	if skipReachability() {
+		return true, nil
+	}
+
 	var isReachable bool
 	var err error
 
@@ -300,6 +306,10 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 // IsHostnameReachable returns whether the
 // input hostname target can be resolved.
 func IsHostnameReachable(target string) bool {
+	if skipReachability() {
+		return true
+	}
+
 	_, err := net.LookupHost(target)
 	if err != nil {
 		if dnsErr, ok := err.(*net.DNSError); ok {
@@ -312,6 +322,10 @@ func IsHostnameReachable(target string) bool {
 // IsWebAddrsReachable returns whether the
 // input web address accepts HTTP requests.
 func IsWebAddrsReachable(target string) bool {
+	if skipReachability() {
+		return true
+	}
+
 	_, err := http.Get(target)
 	if err != nil {
 		return false
@@ -323,6 +337,10 @@ func IsWebAddrsReachable(target string) bool {
 // is a reachable Domain Name. The criteria to determine
 // a target as a Domain is the existence of a SOA record.
 func IsDomainReachable(target string) (bool, error) {
+	if skipReachability() {
+		return true, nil
+	}
+
 	return types.IsDomainName(target)
 }
 
@@ -330,6 +348,10 @@ func IsDomainReachable(target string) (bool, error) {
 // allows to assume role with the given params through the vulcan-assume-role service.
 // If role is assumed correctly for the given account, STS credentials are returned.
 func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bool, *credentials.Credentials, error) {
+	if skipReachability() {
+		return true, nil, nil
+	}
+
 	parsedARN, err := arn.Parse(accARN)
 	if err != nil {
 		return false, nil, err
@@ -392,6 +414,10 @@ func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bo
 // Docker client, so we have to contact registry's REST API directly.
 // Reference: https://github.com/moby/moby/issues/14254
 func IsDockerImgReachable(target, user, pass string) (bool, error) {
+	if skipReachability() {
+		return true, nil
+	}
+
 	repo, err := parseDockerRepo(target)
 	if err != nil {
 		return false, err
@@ -567,6 +593,10 @@ func parseDockerRepo(repo string) (dockerRepo, error) {
 // by performing a ls-remote.
 // If no authentication is required, user and pass parameters can be void.
 func IsGitRepoReachable(target, user, pass string) bool {
+	if skipReachability() {
+		return true
+	}
+
 	rem := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name: "origin",
 		URLs: []string{target},
@@ -577,4 +607,20 @@ func IsGitRepoReachable(target, user, pass string) bool {
 	}
 	_, err := rem.List(&git.ListOptions{Auth: auth})
 	return err == nil
+}
+
+const envSkipReachability = "VULCAN_SKIP_REACHABILITY"
+
+// skipReachability returns the value of the environment variable
+// "VULCAN_SKIP_REACHABILITY" as parsed by [strconv.ParseBool].
+func skipReachability() bool {
+	v := os.Getenv(envSkipReachability)
+	if v == "" {
+		return false
+	}
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return false
+	}
+	return b
 }
