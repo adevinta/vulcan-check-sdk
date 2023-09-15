@@ -163,9 +163,9 @@ func isAllowed(addr string) (bool, error) {
 // necessary to access an authenticated service.
 // There are constructors available in this same
 // package for:
-//    - AWS Assume role through vulcan-assume-role svc.
-//    - Docker registry.
-//    - Github repository.
+//   - AWS Assume role through vulcan-assume-role svc.
+//   - Docker registry.
+//   - Github repository.
 type ServiceCreds interface {
 	URL() string
 	Username() string
@@ -254,14 +254,14 @@ func (c *GitCreds) Password() string {
 // in this same package.
 //
 // Verifications made depend on the asset type:
-//    - IP: None.
-//    - IPRange: None.
-//    - Hostname: NS Lookup resolution.
-//    - WebAddress: HTTP GET request.
-//    - DomainName: NS Lookup checking SOA record.
-//    - AWSAccount: Assume Role.
-//    - DockerImage: Check image exists in registry.
-//    - GitRepository: Git ls-remote.
+//   - IP: None.
+//   - IPRange: None.
+//   - Hostname: NS Lookup resolution.
+//   - WebAddress: HTTP GET request.
+//   - DomainName: NS Lookup checking SOA record.
+//   - AWSAccount: Assume Role.
+//   - DockerImage: Check image exists in registry.
+//   - GitRepository: Git ls-remote.
 //
 // This function does not return any output related to the process in order to
 // verify the target's reachability. This output can be useful for some cases
