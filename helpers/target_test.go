@@ -99,6 +99,7 @@ func TestTarget_IsHostnameReachable(t *testing.T) {
 	testCases := []struct {
 		name   string
 		target string
+		skip   string
 		want   bool
 	}{
 		{
@@ -111,10 +112,18 @@ func TestTarget_IsHostnameReachable(t *testing.T) {
 			target: "thisIsProbablyAnUnexistentHostnameIReallyHope.com",
 			want:   false,
 		},
+		{
+			name:   "Skip reachability check",
+			target: "thisIsProbablyAnUnexistentHostnameIReallyHope.com",
+			skip:   "true",
+			want:   true,
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(envSkipReachability, tt.skip)
+
 			if isReachable := IsHostnameReachable(tt.target); isReachable != tt.want {
 				t.Fatalf("Expected reachability for %s to be %v, but got %v",
 					tt.target, tt.want, isReachable)
@@ -127,6 +136,7 @@ func TestTarget_IsWebAddrsReachable(t *testing.T) {
 	testCases := []struct {
 		name   string
 		target string
+		skip   string
 		want   bool
 	}{
 		{
@@ -139,10 +149,18 @@ func TestTarget_IsWebAddrsReachable(t *testing.T) {
 			target: "http://www.thisIsProbablyAnUnexistentHostnameIReallyHope.com",
 			want:   false,
 		},
+		{
+			name:   "Skip reachability check",
+			target: "http://www.thisIsProbablyAnUnexistentHostnameIReallyHope.com",
+			skip:   "true",
+			want:   true,
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(envSkipReachability, tt.skip)
+
 			if isReachable := IsWebAddrsReachable(tt.target); isReachable != tt.want {
 				t.Fatalf("Expected reachability for %s to be %v, but got %v",
 					tt.target, tt.want, isReachable)
@@ -230,6 +248,7 @@ func TestTarget_IsAWSAccReachable(t *testing.T) {
 		name       string
 		input      input
 		srvHandler http.Handler
+		skip       string
 		want       bool
 		wantCreds  *credentials.Credentials
 	}{
@@ -256,10 +275,22 @@ func TestTarget_IsAWSAccReachable(t *testing.T) {
 			srvHandler: koHandler,
 			want:       false,
 		},
+		{
+			name: "Skip reachability check",
+			input: input{
+				accID: "arn:aws:iam::111111111111:root",
+				role:  "role2",
+			},
+			srvHandler: koHandler,
+			skip:       "true",
+			want:       true,
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(envSkipReachability, tt.skip)
+
 			testSrv := httptest.NewServer(tt.srvHandler)
 
 			isReachable, creds, err := IsAWSAccReachable(tt.input.accID, testSrv.URL, tt.input.role, tt.input.sessDuration)
@@ -293,6 +324,7 @@ func TestTarget_IsDockerImgReachable(t *testing.T) {
 		target  string
 		user    string
 		pass    string
+		skip    string
 		want    bool
 		wantErr bool
 	}{
@@ -320,10 +352,19 @@ func TestTarget_IsDockerImgReachable(t *testing.T) {
 			want:    false,
 			wantErr: true,
 		},
+		{
+			name:    "Skip reachability check",
+			target:  "registry.hub.docker.com/thisissomegiberishaweioanwe/giberishaweoij:latest",
+			skip:    "true",
+			want:    true,
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(envSkipReachability, tt.skip)
+
 			isReachable, err := IsDockerImgReachable(tt.target, tt.user, tt.pass)
 			if err != nil && !tt.wantErr {
 				t.Fatalf("Expected no error but got: %v", err)
@@ -380,6 +421,7 @@ func TestTarget_IsGitRepoReachable(t *testing.T) {
 	testCases := []struct {
 		name  string
 		input input
+		skip  string
 		want  bool
 	}{
 		{
@@ -396,10 +438,20 @@ func TestTarget_IsGitRepoReachable(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "Skip reachability check",
+			input: input{
+				target: "https://github.com/adevinta/thisissomegiberishaweno.git",
+			},
+			skip: "true",
+			want: true,
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(envSkipReachability, tt.skip)
+
 			isReachable := IsGitRepoReachable(tt.input.target, tt.input.user, tt.input.pass)
 			if isReachable != tt.want {
 				t.Fatalf("Expected Git repo '%s' reachability to be %v, but got %v",
