@@ -246,12 +246,12 @@ func (c *GitCreds) Password() string {
 	return c.Pass
 }
 
-// IsReachable returns whether target is reachable
-// so the check execution can be performed.
+// IsReachable returns whether target is reachable so the check
+// execution can be performed.
 //
 // ServiceCredentials are required for AWS, Docker and Git types.
-// Constructors for AWS, Docker and Git credentials can be found
-// in this same package.
+// Constructors for AWS, Docker and Git credentials can be found in
+// this same package.
 //
 // Verifications made depend on the asset type:
 //   - IP: None.
@@ -263,11 +263,16 @@ func (c *GitCreds) Password() string {
 //   - DockerImage: Check image exists in registry.
 //   - GitRepository: Git ls-remote.
 //
-// This function does not return any output related to the process in order to
-// verify the target's reachability. This output can be useful for some cases
-// in order to not repeat work in the check execution (e.g.: Obtaining the
-// Assume Role token). For this purpose other individual methods can be called
-// from this same package with further options for AWS, Docker and Git types.
+// This function does not return any output related to the process in
+// order to verify the target's reachability. This output can be
+// useful for some cases in order to not repeat work in the check
+// execution (e.g.: Obtaining the Assume Role token). For this purpose
+// other individual methods can be called from this same package with
+// further options for AWS, Docker and Git types.
+//
+// If the environment variable VULCAN_SKIP_REACHABILITY is true
+// according to [strconv.ParseBool], then the reachability test is
+// skipped and IsReachable returns true.
 func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 	if skipReachability() {
 		return true, nil
@@ -303,8 +308,12 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 	return isReachable, err
 }
 
-// IsHostnameReachable returns whether the
-// input hostname target can be resolved.
+// IsHostnameReachable returns whether the input hostname target can
+// be resolved.
+//
+// If the environment variable VULCAN_SKIP_REACHABILITY is true
+// according to [strconv.ParseBool], then the reachability test is
+// skipped and IsHostnameReachable returns true.
 func IsHostnameReachable(target string) bool {
 	if skipReachability() {
 		return true
@@ -319,8 +328,12 @@ func IsHostnameReachable(target string) bool {
 	return true
 }
 
-// IsWebAddrsReachable returns whether the
-// input web address accepts HTTP requests.
+// IsWebAddrsReachable returns whether the input web address accepts
+// HTTP requests.
+//
+// If the environment variable VULCAN_SKIP_REACHABILITY is true
+// according to [strconv.ParseBool], then the reachability test is
+// skipped and IsWebAddrsReachable returns true.
 func IsWebAddrsReachable(target string) bool {
 	if skipReachability() {
 		return true
@@ -333,9 +346,13 @@ func IsWebAddrsReachable(target string) bool {
 	return true
 }
 
-// IsDomainReachable returns whether the input target
-// is a reachable Domain Name. The criteria to determine
-// a target as a Domain is the existence of a SOA record.
+// IsDomainReachable returns whether the input target is a reachable
+// Domain Name. The criteria to determine a target as a Domain is the
+// existence of a SOA record.
+//
+// If the environment variable VULCAN_SKIP_REACHABILITY is true
+// according to [strconv.ParseBool], then the reachability test is
+// skipped and IsDomainReachable returns true.
 func IsDomainReachable(target string) (bool, error) {
 	if skipReachability() {
 		return true, nil
@@ -344,9 +361,14 @@ func IsDomainReachable(target string) (bool, error) {
 	return types.IsDomainName(target)
 }
 
-// IsAWSAccReachable returns whether the AWS account associated with the input ARN
-// allows to assume role with the given params through the vulcan-assume-role service.
-// If role is assumed correctly for the given account, STS credentials are returned.
+// IsAWSAccReachable returns whether the AWS account associated with
+// the input ARN allows to assume role with the given params through
+// the vulcan-assume-role service. If role is assumed correctly for
+// the given account, STS credentials are returned.
+//
+// If the environment variable VULCAN_SKIP_REACHABILITY is true
+// according to [strconv.ParseBool], then the reachability test is
+// skipped and IsAWSAccReachable returns true and no STS credentials.
 func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bool, *credentials.Credentials, error) {
 	if skipReachability() {
 		return true, nil, nil
@@ -404,15 +426,19 @@ func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bo
 		assumeRoleResp.SessionToken), nil
 }
 
-// IsDockerImgReachable returns whether the input Docker image exists in the
-// registry. Void user and pass does not produce an error as long as a token
-// can be generated without authentication.
+// IsDockerImgReachable returns whether the input Docker image exists
+// in the registry. Void user and pass does not produce an error as
+// long as a token can be generated without authentication.
 //
-// In order to verify if the Docker image exists, we perform a request to
-// registry API endpoint to get data for given image and tag.  This
-// functionality at the moment of this writing is still not implemented in
-// Docker client, so we have to contact registry's REST API directly.
-// Reference: https://github.com/moby/moby/issues/14254
+// In order to verify if the Docker image exists, we perform a request
+// to registry API endpoint to get data for given image and tag. This
+// functionality at the moment of this writing is still not
+// implemented in Docker client, so we have to contact registry's REST
+// API directly. Reference: https://github.com/moby/moby/issues/14254
+//
+// If the environment variable VULCAN_SKIP_REACHABILITY is true
+// according to [strconv.ParseBool], then the reachability test is
+// skipped and IsDockerImgReachable returns true.
 func IsDockerImgReachable(target, user, pass string) (bool, error) {
 	if skipReachability() {
 		return true, nil
@@ -589,9 +615,13 @@ func parseDockerRepo(repo string) (dockerRepo, error) {
 	}, nil
 }
 
-// IsGitRepoReachable returns whether the input Git repository is reachable
-// by performing a ls-remote.
-// If no authentication is required, user and pass parameters can be void.
+// IsGitRepoReachable returns whether the input Git repository is
+// reachable by performing a ls-remote. If no authentication is
+// required, user and pass parameters can be void.
+//
+// If the environment variable VULCAN_SKIP_REACHABILITY is true
+// according to [strconv.ParseBool], then the reachability test is
+// skipped and IsGitRepoReachable returns true.
 func IsGitRepoReachable(target, user, pass string) bool {
 	if skipReachability() {
 		return true
