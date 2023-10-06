@@ -488,9 +488,10 @@ func IsDockerImgReachable(target, user, pass string) (bool, error) {
 	if img.Name != repo.Img {
 		return false, fmt.Errorf("image differs. want: %v, have: %v", repo.Img, img.Name)
 	}
+	rt := strings.ToLower(repo.Tag)
 	found := false
 	for _, tag := range img.Tags {
-		if tag == repo.Tag {
+		if strings.ToLower(tag) == rt {
 			found = true
 			break
 		}
