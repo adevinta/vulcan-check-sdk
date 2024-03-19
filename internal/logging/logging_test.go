@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/adevinta/vulcan-check-sdk/config"
+	log "github.com/sirupsen/logrus"
 )
 
 type buildRootLogTestArgs struct {
