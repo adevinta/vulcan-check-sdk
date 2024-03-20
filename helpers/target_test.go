@@ -6,6 +6,7 @@ package helpers
 
 import (
 	"encoding/json"
+	types "github.com/adevinta/vulcan-types"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"google.golang.org/api/cloudresourcemanager/v3"
 )
 
 func TestTarget_IsScannable(t *testing.T) {
@@ -55,6 +57,11 @@ func TestTarget_IsScannable(t *testing.T) {
 		{
 			name:   "ValidAWSAccount",
 			target: "arn:aws:iam::111111111111:root",
+			want:   true,
+		},
+		{
+			name:   "ValidGCPProject",
+			target: "google-project123",
 			want:   true,
 		},
 		{
@@ -316,6 +323,138 @@ func isAWSAccountID(accID string) bool {
 		return true
 	}
 	return false
+}
+
+func TestTarget_IsGCPProjReachable(t *testing.T) {
+	// Test http handler for active and existent project
+	projectExistsAndActiveHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Parse the Project ID from the request path
+		requestPath := r.URL.Path
+		projectID := requestPath[len("/v3/projects/"):]
+
+		if !types.IsGCPProjectID(projectID) {
+			t.Log("Mock server URI path has not a valid projID")
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		// Build response body
+		respBody, err := json.Marshal(cloudresourcemanager.Project{
+			Name:      projectID,
+			ProjectId: projectID,
+			State:     "ACTIVE",
+		})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(respBody)
+	})
+	// Test http handler for inactive and existent project
+	projectExistsAndInactiveHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Parse the Project ID from the request path
+		requestPath := r.URL.Path
+		projectID := requestPath[len("/v3/projects/"):]
+
+		if !types.IsGCPProjectID(projectID) {
+			t.Log("Mock server URI path has not a valid projID")
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		// Build response body
+		respBody, err := json.Marshal(cloudresourcemanager.Project{
+			Name:      projectID,
+			ProjectId: projectID,
+			State:     "DELETE_REQUESTED",
+		})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(respBody)
+	})
+	// Test http handler for nonexistent project
+	projectNotAccessibleHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Parse the Project ID from the request path
+		requestPath := r.URL.Path
+		projectID := requestPath[len("/v3/projects/"):]
+
+		if !types.IsGCPProjectID(projectID) {
+			t.Log("Mock server URI path has not a valid projID")
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		w.WriteHeader(http.StatusForbidden)
+		w.Write(nil)
+	})
+
+	type input struct {
+		projID    string
+		credsPath string
+	}
+
+	testCases := []struct {
+		name       string
+		input      input
+		srvHandler http.Handler
+		skip       string
+		want       bool
+	}{
+		{
+			name: "Should return true, project exists and is active",
+			input: input{
+				projID:    "google-project123",
+				credsPath: "thisissomegiberishaweno.json",
+			},
+			srvHandler: projectExistsAndActiveHandler,
+			want:       true,
+		},
+		{
+			name: "Should return false, project exists and is inactive",
+			input: input{
+				projID:    "google-project-123",
+				credsPath: "thisissomegiberishaweno.json",
+			},
+			srvHandler: projectExistsAndInactiveHandler,
+			want:       false,
+		},
+		{
+			name: "Should return false, project does not exists",
+			input: input{
+				projID:    "non-existent-project",
+				credsPath: "thisissomegiberishaweno.json",
+			},
+			srvHandler: projectNotAccessibleHandler,
+			want:       false,
+		},
+		{
+			name: "Skip reachability check",
+			input: input{
+				projID:    "non-existent-project",
+				credsPath: "thisissomegiberishaweno.json",
+			},
+			srvHandler: projectNotAccessibleHandler,
+			want:       true,
+			skip:       "true",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(envSkipReachability, tt.skip)
+
+			testSrv := httptest.NewServer(tt.srvHandler)
+
+			isReachable, err := IsGCPProjReachable(tt.input.projID, testSrv.URL, tt.input.credsPath)
+			if err != nil {
+				t.Fatalf("Expected no error but got: %v", err)
+			}
+			if isReachable != tt.want {
+				t.Fatalf("Expected reachability for %s to be %v, but got %v",
+					tt.input.projID, tt.want, isReachable)
+			}
+
+			testSrv.Close()
+		})
+	}
 }
 
 func TestTarget_IsDockerImgReachable(t *testing.T) {
