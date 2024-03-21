@@ -205,25 +205,23 @@ func (c *AWSCreds) Password() string {
 // GCPCreds holds data required
 // to perform a describe project request.
 type GCPCreds struct {
-	SvcAccount      string
-	SACredsFilePath string
+	SACreds string
 }
 
 // NewGCPCreds creates a new GCP Credentials object for Service Account.
-func NewGCPCreds(svcAccount, credsFilePath string) *GCPCreds {
+func NewGCPCreds(saCreds string) *GCPCreds {
 	return &GCPCreds{
-		SvcAccount:      svcAccount,
-		SACredsFilePath: credsFilePath,
+		SACreds: saCreds,
 	}
 }
 func (c *GCPCreds) URL() string {
 	return ""
 }
 func (c *GCPCreds) Username() string {
-	return c.SvcAccount
+	return ""
 }
 func (c *GCPCreds) Password() string {
-	return c.SACredsFilePath
+	return c.SACreds
 }
 
 type DockerCreds struct {
@@ -465,7 +463,7 @@ func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bo
 // If the environment variable VULCAN_SKIP_REACHABILITY is true
 // according to [strconv.ParseBool], then the reachability test is
 // skipped and IsGCPProjReachable returns true.
-func IsGCPProjReachable(gcpProject, endpoint, saCredsFilePath string) (bool, error) {
+func IsGCPProjReachable(gcpProject, endpoint, saCreds string) (bool, error) {
 	if skipReachability() {
 		return true, nil
 	}
@@ -474,18 +472,18 @@ func IsGCPProjReachable(gcpProject, endpoint, saCredsFilePath string) (bool, err
 		return false, nil
 	}
 
-	if saCredsFilePath == "" {
-		return false, fmt.Errorf("GCP credentials file path is required")
+	saCredsJSON, err := json.Marshal(saCreds)
+	if err != nil {
+		return false, err
 	}
 
 	ctx := context.Background()
-	var crmService *cloudresourcemanager.Service
 	var serviceOptions []option.ClientOption
 	if endpoint != "" {
 		serviceOptions = append(serviceOptions, option.WithEndpoint(endpoint))
 		serviceOptions = append(serviceOptions, option.WithoutAuthentication())
 	} else {
-		serviceOptions = append(serviceOptions, option.WithCredentialsFile(saCredsFilePath))
+		serviceOptions = append(serviceOptions, option.WithCredentialsJSON(saCredsJSON))
 	}
 	crmService, err := cloudresourcemanager.NewService(ctx, serviceOptions...)
 	if err != nil {

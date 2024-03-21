@@ -388,7 +388,7 @@ func TestTarget_IsGCPProjReachable(t *testing.T) {
 
 	type input struct {
 		projID    string
-		credsPath string
+		credsJSON string
 	}
 
 	testCases := []struct {
@@ -401,8 +401,8 @@ func TestTarget_IsGCPProjReachable(t *testing.T) {
 		{
 			name: "Should return true, project exists and is active",
 			input: input{
-				projID:    "google-project123",
-				credsPath: "thisissomegiberishaweno.json",
+				projID:    "active-google-project123",
+				credsJSON: "{\"creds\": \"thisissomegiberish\"}",
 			},
 			srvHandler: projectExistsAndActiveHandler,
 			want:       true,
@@ -410,8 +410,8 @@ func TestTarget_IsGCPProjReachable(t *testing.T) {
 		{
 			name: "Should return false, project exists and is inactive",
 			input: input{
-				projID:    "google-project-123",
-				credsPath: "thisissomegiberishaweno.json",
+				projID:    "inactive-google-project-123",
+				credsJSON: "{\"creds\": \"thisissomegiberish\"}",
 			},
 			srvHandler: projectExistsAndInactiveHandler,
 			want:       false,
@@ -420,7 +420,7 @@ func TestTarget_IsGCPProjReachable(t *testing.T) {
 			name: "Should return false, project does not exists",
 			input: input{
 				projID:    "non-existent-project",
-				credsPath: "thisissomegiberishaweno.json",
+				credsJSON: "{\"creds\": \"thisissomegiberish\"}",
 			},
 			srvHandler: projectNotAccessibleHandler,
 			want:       false,
@@ -429,7 +429,7 @@ func TestTarget_IsGCPProjReachable(t *testing.T) {
 			name: "Skip reachability check",
 			input: input{
 				projID:    "non-existent-project",
-				credsPath: "thisissomegiberishaweno.json",
+				credsJSON: "{}",
 			},
 			srvHandler: projectNotAccessibleHandler,
 			want:       true,
@@ -443,7 +443,7 @@ func TestTarget_IsGCPProjReachable(t *testing.T) {
 
 			testSrv := httptest.NewServer(tt.srvHandler)
 
-			isReachable, err := IsGCPProjReachable(tt.input.projID, testSrv.URL, tt.input.credsPath)
+			isReachable, err := IsGCPProjReachable(tt.input.projID, testSrv.URL, tt.input.credsJSON)
 			if err != nil {
 				t.Fatalf("Expected no error but got: %v", err)
 			}
