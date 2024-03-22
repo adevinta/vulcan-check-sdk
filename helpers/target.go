@@ -6,9 +6,12 @@ package helpers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
 	"io"
 	"log"
 	"net"
@@ -27,6 +30,7 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 
 	types "github.com/adevinta/vulcan-types"
+	"google.golang.org/api/cloudresourcemanager/v3"
 )
 
 const (
@@ -37,6 +41,7 @@ const (
 	hostnameType  = "Hostname"
 	webAddrsType  = "WebAddress"
 	awsAccType    = "AWSAccount"
+	gcpProjType   = "GCPProject"
 	dockerImgType = "DockerImage"
 	gitRepoType   = "GitRepository"
 
@@ -164,6 +169,7 @@ func isAllowed(addr string) (bool, error) {
 // There are constructors available in this same
 // package for:
 //   - AWS Assume role through vulcan-assume-role svc.
+//   - GCP Service Account.
 //   - Docker registry.
 //   - Github repository.
 type ServiceCreds interface {
@@ -194,6 +200,28 @@ func (c *AWSCreds) Username() string {
 }
 func (c *AWSCreds) Password() string {
 	return ""
+}
+
+// GCPCreds holds data required
+// to perform a describe project request.
+type GCPCreds struct {
+	SACreds string
+}
+
+// NewGCPCreds creates a new GCP Credentials object for Service Account.
+func NewGCPCreds(saCreds string) *GCPCreds {
+	return &GCPCreds{
+		SACreds: saCreds,
+	}
+}
+func (c *GCPCreds) URL() string {
+	return ""
+}
+func (c *GCPCreds) Username() string {
+	return ""
+}
+func (c *GCPCreds) Password() string {
+	return c.SACreds
 }
 
 type DockerCreds struct {
@@ -249,8 +277,8 @@ func (c *GitCreds) Password() string {
 // IsReachable returns whether target is reachable so the check
 // execution can be performed.
 //
-// ServiceCredentials are required for AWS, Docker and Git types.
-// Constructors for AWS, Docker and Git credentials can be found in
+// ServiceCredentials are required for AWS, GCP, Docker and Git types.
+// Constructors for AWS, GCP, Docker and Git credentials can be found in
 // this same package.
 //
 // Verifications made depend on the asset type:
@@ -260,6 +288,7 @@ func (c *GitCreds) Password() string {
 //   - WebAddress: HTTP GET request.
 //   - DomainName: NS Lookup checking SOA record.
 //   - AWSAccount: Assume Role.
+//   - GCPProject: GCP Get Project.
 //   - DockerImage: Check image exists in registry.
 //   - GitRepository: Git ls-remote.
 //
@@ -268,7 +297,7 @@ func (c *GitCreds) Password() string {
 // useful for some cases in order to not repeat work in the check
 // execution (e.g.: Obtaining the Assume Role token). For this purpose
 // other individual methods can be called from this same package with
-// further options for AWS, Docker and Git types.
+// further options for AWS, GCP, Docker and Git types.
 //
 // If the environment variable VULCAN_SKIP_REACHABILITY is true
 // according to [strconv.ParseBool], then the reachability test is
@@ -281,8 +310,9 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 	var isReachable bool
 	var err error
 
-	if (assetType == awsAccType || assetType == dockerImgType ||
-		assetType == gitRepoType) && creds == nil {
+	if (assetType == awsAccType || assetType == gcpProjType ||
+		assetType == dockerImgType || assetType == gitRepoType) &&
+		creds == nil {
 		return false, fmt.Errorf("ServiceCredentials are required")
 	}
 
@@ -295,6 +325,8 @@ func IsReachable(target, assetType string, creds ServiceCreds) (bool, error) {
 		isReachable, err = IsDomainReachable(target)
 	case awsAccType:
 		isReachable, _, err = IsAWSAccReachable(target, creds.URL(), creds.Username(), minSessTime)
+	case gcpProjType:
+		isReachable, err = IsGCPProjReachable(target, creds.URL(), creds.Password())
 	case dockerImgType:
 		isReachable, err = IsDockerImgReachable(target, creds.Username(), creds.Password())
 	case gitRepoType:
@@ -424,6 +456,57 @@ func IsAWSAccReachable(accARN, assumeRoleURL, role string, sessDuration int) (bo
 		assumeRoleResp.AccessKey,
 		assumeRoleResp.SecretAccessKey,
 		assumeRoleResp.SessionToken), nil
+}
+
+// IsGCPProjReachable returns whether the GCP project is reachable.
+//
+// If the environment variable VULCAN_SKIP_REACHABILITY is true
+// according to [strconv.ParseBool], then the reachability test is
+// skipped and IsGCPProjReachable returns true.
+func IsGCPProjReachable(gcpProject, endpoint, saCreds string) (bool, error) {
+	if skipReachability() {
+		return true, nil
+	}
+
+	if !types.IsGCPProjectID(gcpProject) {
+		return false, nil
+	}
+
+	saCredsJSON := []byte(saCreds)
+
+	ctx := context.Background()
+	var serviceOptions []option.ClientOption
+	if endpoint != "" {
+		serviceOptions = append(serviceOptions, option.WithEndpoint(endpoint))
+		serviceOptions = append(serviceOptions, option.WithoutAuthentication())
+	} else {
+		serviceOptions = append(serviceOptions, option.WithCredentialsJSON(saCredsJSON))
+	}
+	crmService, err := cloudresourcemanager.NewService(ctx, serviceOptions...)
+	if err != nil {
+		return false, err
+	}
+
+	projectName := fmt.Sprintf("projects/%s", gcpProject)
+	projectServiceClient := cloudresourcemanager.NewProjectsService(crmService)
+	projectService := projectServiceClient.Get(projectName)
+	project, err := projectService.Do()
+	if err != nil {
+		// Parsing Google API error to check if the error is due to a forbidden access.
+		var e *googleapi.Error
+		if errors.As(err, &e) {
+			if e.Code == http.StatusForbidden {
+				return false, nil
+			}
+		}
+		return false, err
+	}
+
+	if project.State != "ACTIVE" {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // IsDockerImgReachable returns whether the input Docker image exists
