@@ -472,10 +472,7 @@ func IsGCPProjReachable(gcpProject, endpoint, saCreds string) (bool, error) {
 		return false, nil
 	}
 
-	saCredsJSON, err := json.Marshal(saCreds)
-	if err != nil {
-		return false, err
-	}
+	saCredsJSON := []byte(saCreds)
 
 	ctx := context.Background()
 	var serviceOptions []option.ClientOption
