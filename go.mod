@@ -8,7 +8,7 @@ require (
 	github.com/adevinta/vulcan-types v1.0.1
 	github.com/aws/aws-sdk-go v1.44.244
 	github.com/go-git/go-git/v5 v5.6.1
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.6.0
 	github.com/kr/pretty v0.3.1
 	github.com/lair-framework/go-nmap v0.0.0-20191202052157-3507e0b03523
 	github.com/sirupsen/logrus v1.9.0
