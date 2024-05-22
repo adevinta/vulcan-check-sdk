@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"google.golang.org/api/googleapi"
-	"google.golang.org/api/option"
 	"io"
 	"log"
 	"net"
@@ -22,15 +20,16 @@ import (
 	"strconv"
 	"strings"
 
+	types "github.com/adevinta/vulcan-types"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	gitauth "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/storage/memory"
-
-	types "github.com/adevinta/vulcan-types"
 	"google.golang.org/api/cloudresourcemanager/v3"
+	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
 )
 
 const (
@@ -203,7 +202,7 @@ func (c *AWSCreds) Password() string {
 }
 
 // GCPCreds holds data required
-// to perform a describe project request.
+// to perform a `describe project` request.
 type GCPCreds struct {
 	SACreds string
 }

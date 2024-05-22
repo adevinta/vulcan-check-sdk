@@ -6,7 +6,6 @@ package helpers
 
 import (
 	"encoding/json"
-	types "github.com/adevinta/vulcan-types"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +13,7 @@ import (
 	"strconv"
 	"testing"
 
+	types "github.com/adevinta/vulcan-types"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"google.golang.org/api/cloudresourcemanager/v3"
 )
@@ -326,9 +326,9 @@ func isAWSAccountID(accID string) bool {
 }
 
 func TestTarget_IsGCPProjReachable(t *testing.T) {
-	// Test http handler for active and existent project
+	// Test http handler for active and existent project.
 	projectExistsAndActiveHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Parse the Project ID from the request path
+		// Parse the Project ID from the request path.
 		requestPath := r.URL.Path
 		projectID := requestPath[len("/v3/projects/"):]
 
@@ -336,7 +336,7 @@ func TestTarget_IsGCPProjReachable(t *testing.T) {
 			t.Log("Mock server URI path has not a valid projID")
 			w.WriteHeader(http.StatusBadRequest)
 		}
-		// Build response body
+		// Build response body.
 		respBody, err := json.Marshal(cloudresourcemanager.Project{
 			Name:      projectID,
 			ProjectId: projectID,
@@ -349,9 +349,9 @@ func TestTarget_IsGCPProjReachable(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(respBody)
 	})
-	// Test http handler for inactive and existent project
+	// Test http handler for inactive and existent project.
 	projectExistsAndInactiveHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Parse the Project ID from the request path
+		// Parse the Project ID from the request path.
 		requestPath := r.URL.Path
 		projectID := requestPath[len("/v3/projects/"):]
 
@@ -359,7 +359,7 @@ func TestTarget_IsGCPProjReachable(t *testing.T) {
 			t.Log("Mock server URI path has not a valid projID")
 			w.WriteHeader(http.StatusBadRequest)
 		}
-		// Build response body
+		// Build response body.
 		respBody, err := json.Marshal(cloudresourcemanager.Project{
 			Name:      projectID,
 			ProjectId: projectID,
@@ -372,9 +372,9 @@ func TestTarget_IsGCPProjReachable(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(respBody)
 	})
-	// Test http handler for nonexistent project
+	// Test http handler for nonexistent project.
 	projectNotAccessibleHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Parse the Project ID from the request path
+		// Parse the Project ID from the request path.
 		requestPath := r.URL.Path
 		projectID := requestPath[len("/v3/projects/"):]
 
