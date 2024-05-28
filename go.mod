@@ -3,7 +3,7 @@ module github.com/adevinta/vulcan-check-sdk
 go 1.19
 
 require (
-	github.com/BurntSushi/toml v1.2.1
+	github.com/BurntSushi/toml v1.4.0
 	github.com/adevinta/vulcan-report v1.0.0
 	github.com/adevinta/vulcan-types v1.2.11
 	github.com/aws/aws-sdk-go v1.51.0
@@ -12,7 +12,7 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/lair-framework/go-nmap v0.0.0-20191202052157-3507e0b03523
 	github.com/sirupsen/logrus v1.9.0
-	google.golang.org/api v0.171.0
+	google.golang.org/api v0.163.0
 	gopkg.in/resty.v1 v1.12.0
 )
 
@@ -36,7 +36,7 @@ require (
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
-	github.com/googleapis/gax-go/v2 v2.12.3 // indirect
+	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
