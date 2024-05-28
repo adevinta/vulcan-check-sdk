@@ -426,6 +426,15 @@ func TestTarget_IsGCPProjReachable(t *testing.T) {
 			want:       false,
 		},
 		{
+			name: "Should return false, format of project ID is invalid",
+			input: input{
+				projID:    "Invalid_project:id",
+				credsJSON: "{\"creds\": \"thisissomegiberish\"}",
+			},
+			srvHandler: projectNotAccessibleHandler,
+			want:       false,
+		},
+		{
 			name: "Skip reachability check",
 			input: input{
 				projID:    "non-existent-project",
