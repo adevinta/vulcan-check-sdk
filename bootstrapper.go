@@ -160,6 +160,14 @@ func NewCheckLog(name string) *log.Entry {
 	return (l)
 }
 
+// NewCheckLogFromContext retrieves the logger from the context or creates a new one.
+func NewCheckLogFromContext(ctx context.Context, name string) *log.Entry {
+	if l, ok := ctx.Value("logger").(*log.Entry); ok {
+		return l
+	}
+	return NewCheckLog(name)
+}
+
 // NewCheckFromHandlerWithConfig creates a new check from run and abort handlers using provided config.
 func NewCheckFromHandlerWithConfig(name string, conf *config.Config, run CheckerHandleRun) Check {
 	checkerAdapter := struct {
