@@ -14,6 +14,7 @@ import (
 
 	"github.com/adevinta/vulcan-check-sdk/agent"
 	"github.com/adevinta/vulcan-check-sdk/config"
+	"github.com/adevinta/vulcan-check-sdk/internal/http"
 	"github.com/adevinta/vulcan-check-sdk/internal/local"
 	"github.com/adevinta/vulcan-check-sdk/internal/logging"
 	"github.com/adevinta/vulcan-check-sdk/internal/push"
@@ -131,8 +132,18 @@ func NewCheck(name string, checker Checker) Check {
 		conf.Check.Opts = options
 		c = newLocalCheck(name, checker, logger, conf, json)
 	} else {
-		logger.Debug("Push mode")
-		c = push.NewCheckWithConfig(name, checker, logger, conf)
+		if conf.Port > 0 {
+			logger.Debug("Http mode")
+			l := logging.BuildLoggerWithConfigAndFields(conf.Log, log.Fields{
+				// "checkTypeName":    "TODO",
+				// "checkTypeVersion": "TODO",
+				// "component":        "checks",
+			})
+			c = http.NewCheck(name, checker, l, conf)
+		} else {
+			logger.Debug("Push mode")
+			c = push.NewCheckWithConfig(name, checker, logger, conf)
+		}
 	}
 	cachedConfig = conf
 	return c

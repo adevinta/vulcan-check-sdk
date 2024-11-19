@@ -30,6 +30,8 @@ const (
 	pushAgentAddr    = "VULCAN_AGENT_ADDRESS"
 	pushMsgBufferLen = "VULCAN_CHECK_MSG_BUFF_LEN"
 
+	httpPort = "VULCAN_HTTP_PORT"
+
 	// Allows scanning private / reserved IP addresses.
 	allowPrivateIPs = "VULCAN_ALLOW_PRIVATE_IPS"
 
@@ -63,6 +65,7 @@ type Config struct {
 	Log             LogConfig         `toml:"Log"`
 	CommMode        string            `toml:"CommMode"`
 	Push            rest.PusherConfig `toml:"Push"`
+	Port            int
 	AllowPrivateIPs *bool             `toml:"AllowPrivateIps"`
 	RequiredVars    map[string]string `toml:"RequiredVars"`
 }
@@ -119,6 +122,14 @@ func overrideCommConfigEnvVars(c *Config) {
 	pushEndPoint := os.Getenv(pushAgentAddr)
 	if pushEndPoint != "" {
 		c.Push.AgentAddr = pushEndPoint
+	}
+
+	port := os.Getenv(httpPort)
+	if port != "" {
+		p, err := strconv.Atoi(port)
+		if err == nil {
+			c.Port = p
+		}
 	}
 
 	msgBuffLen := os.Getenv(pushMsgBufferLen)
