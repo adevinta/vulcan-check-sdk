@@ -167,9 +167,6 @@ func setEnvVars(envVars map[string]string) error {
 }
 
 func TestLoadConfigFromFile(t *testing.T) {
-	type args struct {
-		filePath string
-	}
 	tests := []struct {
 		name     string
 		filepath string

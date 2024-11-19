@@ -371,10 +371,7 @@ func IsWebAddrsReachable(target string) bool {
 	}
 
 	_, err := http.Get(target)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 // IsDomainReachable returns whether the input target is a reachable
