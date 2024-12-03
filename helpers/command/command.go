@@ -38,13 +38,18 @@ func (e *ParseError) Error() string {
 	return fmt.Sprintf("ProcessOutput:\n%sParser error:%s\n", string(e.ProcessOutput), e.ParserError)
 }
 
-// ExecuteWithStdErr executes a 'command' in a new process
+// ExecuteWithStdErr executes ExecuteWithEnvStdErr without env variables.
+func ExecuteWithStdErr(ctx context.Context, logger *log.Entry, exe string, params ...string) ([]byte, []byte, int, error) {
+	return ExecuteWithEnvStdErr(ctx, logger, nil, exe, params...)
+}
+
+// ExecuteWithEnvStdErr executes a 'command' in a new process
 // Parameter command must contain a path to the command, or simply the command name if lookup in path is wanted.
 // A nil value can be passed in parameters ctx and logger.
 // Returns the outputs of the process written to the standard output and error, also returns the status code returned by the command.
 // Note that, contrary to the standard library, the function doesn't return an error if the command execution returned a value different from 0.
 // The new process where the command is executed inherits all the env vars of the current process.
-func ExecuteWithStdErr(ctx context.Context, logger *log.Entry, exe string, params ...string) ([]byte, []byte, int, error) {
+func ExecuteWithEnvStdErr(ctx context.Context, logger *log.Entry, appendEnv []string, exe string, params ...string) ([]byte, []byte, int, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -55,6 +60,9 @@ func ExecuteWithStdErr(ctx context.Context, logger *log.Entry, exe string, param
 	var returnCode int
 	cmd := exec.CommandContext(ctx, exe, params...) //nolint
 	cmd.Env = os.Environ()
+	if appendEnv != nil {
+		cmd.Env = append(cmd.Env, appendEnv...)
+	}
 	logger.Info("Executing command")
 	stdErr := &bytes.Buffer{}
 	stdOut := &bytes.Buffer{}
@@ -80,6 +88,12 @@ func ExecuteWithStdErr(ctx context.Context, logger *log.Entry, exe string, param
 	return output, errOutput, returnCode, nil
 }
 
+// Execute executes ExecuteEnv without appendEnv variables.
+func Execute(ctx context.Context, logger *log.Entry, exe string, params ...string) (output []byte, exitCode int, err error) {
+	output, _, exitCode, err = ExecuteWithEnvStdErr(ctx, logger, nil, exe, params...)
+	return
+}
+
 // Execute executes a 'command' in a new process
 // Parameter command must contain a path to the command, or simply the command name if lookup in path is wanted.
 // A nil value can be passed in parameters ctx and logger.
@@ -87,9 +101,14 @@ func ExecuteWithStdErr(ctx context.Context, logger *log.Entry, exe string, param
 // Where there is an error,
 // Note that, contrary to the standard library, the function doesn't return an error if the command execution returned a value different from 0.
 // The new process where the command is executed inherits all the env vars of the current process.
-func Execute(ctx context.Context, logger *log.Entry, exe string, params ...string) (output []byte, exitCode int, err error) {
-	output, _, exitCode, err = ExecuteWithStdErr(ctx, logger, exe, params...)
+func ExecuteEnv(ctx context.Context, logger *log.Entry, appendEnv []string, exe string, params ...string) (output []byte, exitCode int, err error) {
+	output, _, exitCode, err = ExecuteWithEnvStdErr(ctx, logger, appendEnv, exe, params...)
 	return
+}
+
+// ExecuteAndParseJSON executes ExecuteEnvAndParseJSON without appendEnv.
+func ExecuteAndParseJSON(ctx context.Context, logger *log.Entry, result interface{}, exe string, params ...string) (int, error) {
+	return ExecuteEnvAndParseJSON(ctx, logger, result, nil, exe, params...)
 }
 
 // ExecuteAndParseJSON executes a command, using the func Execute.
@@ -99,11 +118,16 @@ func Execute(ctx context.Context, logger *log.Entry, exe string, params ...strin
 // error is not nil and the result doesn't contain the process output parsed as json.
 // If an error is raised when trying to parse the process output, the function returns an error of type ParseError that contains the
 // raw output of the process and the error returned by the json parser.
-func ExecuteAndParseJSON(ctx context.Context, logger *log.Entry, result interface{}, exe string, params ...string) (int, error) {
+func ExecuteEnvAndParseJSON(ctx context.Context, logger *log.Entry, result interface{}, appendEnv []string, exe string, params ...string) (int, error) {
 	jsonParser := func(output []byte, result interface{}) error {
 		return json.Unmarshal(output, result)
 	}
 	return ExecuteAndParse(ctx, logger, jsonParser, result, exe, params...)
+}
+
+// ExecuteAndParseXML executes ExecuteEnvAndParseXML without appendEnv.
+func ExecuteAndParseXML(ctx context.Context, logger *log.Entry, result interface{}, exe string, params ...string) (int, error) {
+	return ExecuteEnvAndParseXML(ctx, logger, result, nil, exe, params...)
 }
 
 // ExecuteAndParseXML executes a command, using the func Execute.
@@ -113,15 +137,20 @@ func ExecuteAndParseJSON(ctx context.Context, logger *log.Entry, result interfac
 // error is not nil and the result doesn't contain the process output parsed as XML.
 // If an error is raised when trying to parse the process output, the function returns an error of type ParseError that contains the
 // the raw output of the process and the error returned by the json parser.
-func ExecuteAndParseXML(ctx context.Context, logger *log.Entry, result interface{}, exe string, params ...string) (int, error) {
+func ExecuteEnvAndParseXML(ctx context.Context, logger *log.Entry, result interface{}, appendEnv []string, exe string, params ...string) (int, error) {
 	xmlParser := func(output []byte, result interface{}) error {
 		return xml.Unmarshal(output, result)
 	}
-	return ExecuteAndParse(ctx, logger, xmlParser, result, exe, params...)
+	return ExecuteEnvAndParse(ctx, logger, xmlParser, result, appendEnv, exe, params...)
 }
 
 // OutputParser represent a function that parses an output from process
 type OutputParser func(output []byte, result interface{}) error
+
+// ExecuteAndParse executes ExecuteEnvAndParse without appendEnv.
+func ExecuteAndParse(ctx context.Context, logger *log.Entry, parser OutputParser, result interface{}, exe string, params ...string) (int, error) {
+	return ExecuteEnvAndParse(ctx, logger, parser, result, nil, exe, params...)
+}
 
 // ExecuteAndParse executes a command, using the func Execute and parsing the output using the provided parser function.
 // After execution:
@@ -130,8 +159,8 @@ type OutputParser func(output []byte, result interface{}) error
 // error is not nil and the result doesn't contain the result parsed as json.
 // If an error is raised when trying to parse the output, the function returns an error of type ParseError that contains the
 // the raw output of the process and the error returned by the json parser.
-func ExecuteAndParse(ctx context.Context, logger *log.Entry, parser OutputParser, result interface{}, exe string, params ...string) (int, error) {
-	output, errOutput, status, err := ExecuteWithStdErr(ctx, logger, exe, params...)
+func ExecuteEnvAndParse(ctx context.Context, logger *log.Entry, parser OutputParser, result interface{}, appendEnv []string, exe string, params ...string) (int, error) {
+	output, errOutput, status, err := ExecuteWithEnvStdErr(ctx, logger, appendEnv, exe, params...)
 	if err != nil {
 		return status, err
 	}
