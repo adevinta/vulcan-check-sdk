@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -19,9 +20,14 @@ const (
 	gheTokenVar     = "GITHUB_ENTERPRISE_TOKEN"
 )
 
-// CloneGitRepository clones a Git repository into a temporary directory and returns the path and branch name.
-// If a branch is not specified, the default branch will be used and its name will be returned.
+// CloneGitRepository executes CloneGitRepositoryContext with background context.
 func CloneGitRepository(target string, branch string, depth int) (string, string, error) {
+	return CloneGitRepositoryContext(context.Background(), target, branch, depth)
+}
+
+// CloneGitRepositoryContext clones a Git repository into a temporary directory and returns the path and branch name.
+// If a branch is not specified, the default branch will be used and its name will be returned.
+func CloneGitRepositoryContext(ctx context.Context, target string, branch string, depth int) (string, string, error) {
 	// Check if the target repository is on Github Enterprise and return populated credentials if necessary.
 	auth, err := gheAuth(target)
 	if err != nil {
@@ -53,7 +59,7 @@ func CloneGitRepository(target string, branch string, depth int) (string, string
 	if branch != "" {
 		cloneOptions.ReferenceName = plumbing.ReferenceName(path.Join("refs/heads", branch))
 	}
-	repo, err := git.PlainClone(repoPath, false, &cloneOptions)
+	repo, err := git.PlainCloneContext(ctx, repoPath, false, &cloneOptions)
 	if err != nil {
 		return "", "", fmt.Errorf("error cloning the repository: %w", err)
 	}
