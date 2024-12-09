@@ -65,7 +65,7 @@ type Config struct {
 	Log             LogConfig         `toml:"Log"`
 	CommMode        string            `toml:"CommMode"`
 	Push            rest.PusherConfig `toml:"Push"`
-	Port            int
+	Port            *int              `toml:"Port"`
 	AllowPrivateIPs *bool             `toml:"AllowPrivateIps"`
 	RequiredVars    map[string]string `toml:"RequiredVars"`
 }
@@ -128,7 +128,7 @@ func overrideCommConfigEnvVars(c *Config) {
 	if port != "" {
 		p, err := strconv.Atoi(port)
 		if err == nil {
-			c.Port = p
+			c.Port = &p
 		}
 	}
 

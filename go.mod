@@ -12,6 +12,7 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/lair-framework/go-nmap v0.0.0-20191202052157-3507e0b03523
 	github.com/sirupsen/logrus v1.9.0
+	go.uber.org/goleak v1.3.0
 	google.golang.org/api v0.171.0
 	gopkg.in/resty.v1 v1.12.0
 )

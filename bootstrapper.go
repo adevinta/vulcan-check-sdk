@@ -131,20 +131,19 @@ func NewCheck(name string, checker Checker) Check {
 		conf.Check.Target = runTarget
 		conf.Check.Opts = options
 		c = newLocalCheck(name, checker, logger, conf, json)
+	} else if conf.Port != nil {
+		logger.Debug("Http mode")
+		l := logging.BuildLoggerWithConfigAndFields(conf.Log, log.Fields{
+			// "checkTypeName":    "TODO",
+			// "checkTypeVersion": "TODO",
+			// "component":        "checks",
+		})
+		c = http.NewCheck(name, checker, l, conf)
 	} else {
-		if conf.Port > 0 {
-			logger.Debug("Http mode")
-			l := logging.BuildLoggerWithConfigAndFields(conf.Log, log.Fields{
-				// "checkTypeName":    "TODO",
-				// "checkTypeVersion": "TODO",
-				// "component":        "checks",
-			})
-			c = http.NewCheck(name, checker, l, conf)
-		} else {
-			logger.Debug("Push mode")
-			c = push.NewCheckWithConfig(name, checker, logger, conf)
-		}
+		logger.Debug("Push mode")
+		c = push.NewCheckWithConfig(name, checker, logger, conf)
 	}
+
 	cachedConfig = conf
 	return c
 }
