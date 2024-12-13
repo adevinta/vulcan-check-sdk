@@ -112,6 +112,10 @@ func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // RunAndServe implements the behavior needed by the sdk for a check runner to
 // execute a check.
 func (c *Check) RunAndServe() {
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`"OK"`))
+	})
 	http.HandleFunc("/run", c.ServeHTTP)
 	c.Logger.Info(fmt.Sprintf("Listening at %s", c.server.Addr))
 	go func() {
