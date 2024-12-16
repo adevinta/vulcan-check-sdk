@@ -25,13 +25,14 @@ import (
 
 // Check stores all the information needed to run a check locally.
 type Check struct {
-	Logger     *log.Entry
-	Name       string
-	checker    Checker
-	config     *config.Config
-	port       int
-	server     *http.Server
-	exitSignal chan os.Signal
+	Logger      *log.Entry
+	Name        string
+	checker     Checker
+	config      *config.Config
+	port        int
+	server      *http.Server
+	exitSignal  chan os.Signal // used to stopt the server either by an os Signal or by calling Shutdown()
+	shuttedDown chan int       // used to wait for the server to shut down.
 }
 
 // ServeHTTP implements an http POST handler that receives a JSON enconde Job, and returns an
@@ -119,11 +120,15 @@ func (c *Check) RunAndServe() {
 	})
 	http.HandleFunc("/run", c.ServeHTTP)
 	c.Logger.Info(fmt.Sprintf("Listening at %s", c.server.Addr))
+	c.shuttedDown = make(chan int)
 	go func() {
 		if err := c.server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			c.Logger.WithError(err).Error("Starting http server")
 		}
 		c.Logger.Info("Stopped serving new connections.")
+		if c.shuttedDown != nil {
+			c.shuttedDown <- 1
+		}
 	}()
 
 	s := <-c.exitSignal
@@ -149,21 +154,28 @@ type Job struct {
 	RunTime      int64
 }
 
-// Shutdown is needed to fulfil the check interface but we don't need to do
-// anything in this case.
+// Shutdown is needed to fulfil the check interface and in this case we are
+// shutting down the http server and waiting
 func (c *Check) Shutdown() error {
+	// Send the exit signal to shutdown the server.
 	c.exitSignal <- syscall.SIGTERM
+
+	if c.shuttedDown != nil {
+		// Wait for the server to shutdown.
+		<-c.shuttedDown
+	}
 	return nil
 }
 
 // NewCheck creates new check to be run from the command line without having an agent.
 func NewCheck(name string, checker Checker, logger *log.Entry, conf *config.Config) *Check {
 	c := &Check{
-		Name:       name,
-		Logger:     logger,
-		config:     conf,
-		exitSignal: make(chan os.Signal, 1),
-		port:       *conf.Port,
+		Name:        name,
+		Logger:      logger,
+		config:      conf,
+		exitSignal:  make(chan os.Signal, 1),
+		port:        *conf.Port,
+		shuttedDown: nil,
 	}
 	c.server = &http.Server{Addr: fmt.Sprintf(":%d", c.port)}
 	signal.Notify(c.exitSignal, syscall.SIGINT, syscall.SIGTERM)
