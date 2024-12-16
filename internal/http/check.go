@@ -37,6 +37,7 @@ type Check struct {
 // ServeHTTP implements an http POST handler that receives a JSON enconde Job, and returns an
 // agent.State JSON enconded response.
 func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "error reading request body", http.StatusBadRequest)
@@ -78,7 +79,7 @@ func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err = c.checker.Run(ctx, job.Target, job.AssetType, job.Options, runtimeState)
 	c.checker.CleanUp(ctx, job.Target, job.AssetType, job.Options)
 	checkState.state.Report.CheckData.EndTime = time.Now()
-	elapsedTime := time.Since(checkState.state.Report.CheckData.StartTime)
+	elapsedTime := time.Since(startTime)
 	// If an error has been returned, we set the correct status.
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
@@ -97,7 +98,7 @@ func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	checkState.state.Report.Status = checkState.state.Status
 
-	logger.WithField("seconds", elapsedTime.Seconds()).WithField("state", checkState.state.Status).Info("Check finished")
+	logger.WithFields(log.Fields{"seconds": elapsedTime.Round(time.Millisecond * 100).Seconds(), "state": checkState.state.Status}).Info("Check finished")
 
 	// Initialize sync point for the checker and the push state to be finished.
 	out, err := json.Marshal(checkState.state)
