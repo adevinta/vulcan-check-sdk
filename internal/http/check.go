@@ -120,9 +120,10 @@ func (c *Check) RunAndServe() {
 	http.HandleFunc("/run", c.ServeHTTP)
 	c.Logger.Info(fmt.Sprintf("Listening at %s", c.server.Addr))
 	go func() {
-		if err := c.server.ListenAndServe(); err != nil {
-			// handle err
+		if err := c.server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			c.Logger.WithError(err).Error("Starting http server")
 		}
+		c.Logger.Info("Stopped serving new connections.")
 	}()
 
 	s := <-c.exitSignal
