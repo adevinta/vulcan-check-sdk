@@ -114,7 +114,7 @@ func sleepCheckRunner(ctx context.Context, target, assetType, optJSON string, st
 
 func TestIntegrationHttpMode(t *testing.T) {
 	port := 8888
-	startTime := time.Now()
+	requestTimeout := 3 * time.Second
 	intTests := []httpTest{
 		{
 			name: "HappyPath",
@@ -136,28 +136,24 @@ func TestIntegrationHttpMode(t *testing.T) {
 						Options:   `{"SleepTime": 1}`,
 						Target:    "www.example.com",
 						AssetType: "Hostname",
-						StartTime: startTime,
 					},
 					"checkDeadline": {
 						CheckID:   "checkDeadline",
 						Options:   `{"SleepTime": 10}`,
 						Target:    "www.example.com",
 						AssetType: "Hostname",
-						StartTime: startTime,
 					},
 					"checkInconclusive": {
 						CheckID:   "checkInconclusive",
 						Options:   `{"SleepTime": 1}`,
 						Target:    "inconclusive",
 						AssetType: "Hostname",
-						StartTime: startTime,
 					},
 					"checkFailed": {
 						CheckID:   "checkFailed",
 						Options:   `{}`,
 						Target:    "www.example.com",
 						AssetType: "Hostname",
-						StartTime: startTime,
 					},
 				},
 				resourceToClean: map[string]string{"key": "initial"},
@@ -178,8 +174,6 @@ func TestIntegrationHttpMode(t *testing.T) {
 							Target:           "www.example.com",
 							Options:          `{"SleepTime": 1}`,
 							Status:           agent.StatusFinished,
-							StartTime:        startTime,
-							EndTime:          time.Time{},
 						},
 						ResultData: report.ResultData{
 							Vulnerabilities: []report.Vulnerability{
@@ -206,8 +200,6 @@ func TestIntegrationHttpMode(t *testing.T) {
 							Target:           "inconclusive",
 							Options:          `{"SleepTime": 1}`,
 							Status:           agent.StatusInconclusive,
-							StartTime:        startTime,
-							EndTime:          time.Time{},
 						},
 					},
 				},
@@ -221,8 +213,6 @@ func TestIntegrationHttpMode(t *testing.T) {
 							Target:           "www.example.com",
 							Options:          `{}`,
 							Status:           agent.StatusFailed,
-							StartTime:        startTime,
-							EndTime:          time.Time{},
 						},
 						ResultData: report.ResultData{
 							Error: "error: missing or 0 sleep time",
@@ -277,7 +267,7 @@ func TestIntegrationHttpMode(t *testing.T) {
 						l.Error("Marshal error", "error", err)
 						return
 					}
-					ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+					ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 					defer cancel()
 					req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(cc))
 					if err != nil {
@@ -323,7 +313,7 @@ func TestIntegrationHttpMode(t *testing.T) {
 				results[x.check] = x.resp
 			}
 
-			diff := cmp.Diff(results, tt.want, cmpopts.IgnoreFields(report.CheckData{}, "EndTime"))
+			diff := cmp.Diff(results, tt.want, cmpopts.IgnoreFields(report.CheckData{}, "StartTime", "EndTime"))
 			if diff != "" {
 				t.Errorf("Error in test %s. diffs %+v", tt.name, diff)
 			}
