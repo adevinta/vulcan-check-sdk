@@ -16,11 +16,12 @@ import (
 	"syscall"
 	"time"
 
+	report "github.com/adevinta/vulcan-report"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/adevinta/vulcan-check-sdk/agent"
 	"github.com/adevinta/vulcan-check-sdk/config"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	report "github.com/adevinta/vulcan-report"
-	log "github.com/sirupsen/logrus"
 )
 
 // Check stores all the information needed to run a check locally.
@@ -35,8 +36,8 @@ type Check struct {
 	shuttedDown chan int       // used to wait for the server to shut down.
 }
 
-// ServeHTTP implements an http POST handler that receives a JSON enconde Job, and returns an
-// agent.State JSON enconded response.
+// ServeHTTP implements an HTTP POST handler that receives a JSON encoded job, and returns an
+// agent.State JSON encoded response.
 func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	body, err := io.ReadAll(r.Body)
@@ -45,8 +46,7 @@ func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var job Job
-	err = json.Unmarshal(body, &job)
-	if err != nil {
+	if err = json.Unmarshal(body, &job); err != nil {
 		w.WriteHeader(500)
 		return
 	}

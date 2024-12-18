@@ -1,5 +1,5 @@
 /*
-Copyright 2019 Adevinta
+Copyright 2024 Adevinta
 */
 
 package http
@@ -17,17 +17,16 @@ import (
 	"testing"
 	"time"
 
+	report "github.com/adevinta/vulcan-report"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"go.uber.org/goleak"
-
 	log "github.com/sirupsen/logrus"
+	"go.uber.org/goleak"
 
 	"github.com/adevinta/vulcan-check-sdk/agent"
 	"github.com/adevinta/vulcan-check-sdk/config"
 	"github.com/adevinta/vulcan-check-sdk/internal/logging"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	report "github.com/adevinta/vulcan-report"
 )
 
 type CheckerHandleRun func(ctx context.Context, target, assetType, opts string, s state.State) error
@@ -42,7 +41,7 @@ type CheckerHandleCleanUp func(ctx context.Context, target, assetType, opts stri
 
 // CleanUp is used as adapter to satisfy the method with same name in interface Checker.
 func (handler CheckerHandleCleanUp) CleanUp(ctx context.Context, target, assetType, opts string) {
-	(handler(ctx, target, assetType, opts))
+	handler(ctx, target, assetType, opts)
 }
 
 // NewCheckFromHandler creates a new check given a checker run handler.
@@ -77,7 +76,7 @@ type httpIntParams struct {
 }
 
 // sleepCheckRunner implements a check that sleeps based on the options and generates inconclusive in case of a target with that name.
-func sleepCheckRunner(ctx context.Context, target, assetType, optJSON string, st state.State) (err error) {
+func sleepCheckRunner(ctx context.Context, target, _, optJSON string, st state.State) (err error) {
 	log := logging.BuildRootLog("TestChecker")
 	log.Debug("Check running")
 	st.SetProgress(0.1)
@@ -246,7 +245,7 @@ func TestIntegrationHttpMode(t *testing.T) {
 				resp  agent.State
 			}
 
-			// ch will receibe the results of the concurrent job executions
+			// ch will receive the results of the concurrent job executions
 			ch := make(chan not, len(tt.args.jobs))
 			wg := sync.WaitGroup{}
 
@@ -264,7 +263,7 @@ func TestIntegrationHttpMode(t *testing.T) {
 					}()
 					cc, err := json.Marshal(job)
 					if err != nil {
-						l.Error("Marshal error", "error", err)
+						l.Fatal("Marshal error", "error", err)
 						return
 					}
 					ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)

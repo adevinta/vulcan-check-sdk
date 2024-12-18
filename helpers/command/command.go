@@ -94,7 +94,7 @@ func Execute(ctx context.Context, logger *log.Entry, exe string, params ...strin
 	return
 }
 
-// Execute executes a 'command' in a new process
+// ExecuteEnv executes a 'command' in a new process
 // Parameter command must contain a path to the command, or simply the command name if lookup in path is wanted.
 // A nil value can be passed in parameters ctx and logger.
 // Returns the outputs of the process written to the standard output and the status code returned by the command.
@@ -111,7 +111,7 @@ func ExecuteAndParseJSON(ctx context.Context, logger *log.Entry, result interfac
 	return ExecuteEnvAndParseJSON(ctx, logger, result, nil, exe, params...)
 }
 
-// ExecuteAndParseJSON executes a command, using the func Execute.
+// ExecuteEnvAndParseJSON executes a command, using the func Execute.
 // After execution:
 // returned error is nil and the param result contains the output parsed as json.
 // (x)or
@@ -130,7 +130,7 @@ func ExecuteAndParseXML(ctx context.Context, logger *log.Entry, result interface
 	return ExecuteEnvAndParseXML(ctx, logger, result, nil, exe, params...)
 }
 
-// ExecuteAndParseXML executes a command, using the func Execute.
+// ExecuteEnvAndParseXML executes a command, using the func Execute.
 // After execution:
 // returned error is nil and the param result contains the output parsed as XML.
 // (x)or
