@@ -115,30 +115,37 @@ func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // execute a check.
 func (c *Check) RunAndServe() {
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`"OK"`))
+		if c.shuttedDown == nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`"OK"`))
+		} else {
+			// the server is shutting down
+			http.Error(w, "shuttingDown", http.StatusServiceUnavailable)
+		}
 	})
 	http.HandleFunc("/run", c.ServeHTTP)
 	c.Logger.Info(fmt.Sprintf("Listening at %s", c.server.Addr))
-	c.shuttedDown = make(chan int)
 	go func() {
 		if err := c.server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			c.Logger.WithError(err).Error("Starting http server")
 		}
 		c.Logger.Info("Stopped serving new connections.")
 		if c.shuttedDown != nil {
+			c.Logger.Info("Notifying shuttedDown")
 			c.shuttedDown <- 1
+			c.Logger.Info("Notified shuttedDown")
 		}
 	}()
 
 	s := <-c.exitSignal
 
 	c.Logger.WithField("signal", s.String()).Info("Stopping server")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // TODO: Allow configure value.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second) // TODO: Allow configure value.
 	defer cancel()
 	if err := c.server.Shutdown(ctx); err != nil {
 		c.Logger.WithError(err).Error("Shutting down server")
 	}
+	c.Logger.Info("Finished RunAndServe.")
 }
 
 type Job struct {
@@ -160,10 +167,11 @@ func (c *Check) Shutdown() error {
 	// Send the exit signal to shutdown the server.
 	c.exitSignal <- syscall.SIGTERM
 
-	if c.shuttedDown != nil {
-		// Wait for the server to shutdown.
-		<-c.shuttedDown
-	}
+	c.shuttedDown = make(chan int)
+	// Wait for the server to shutdown.
+	c.Logger.Info("Shutdown: waiting for shuttedDown")
+	<-c.shuttedDown
+	c.Logger.Info("Shutdown:shutted down")
 	return nil
 }
 
