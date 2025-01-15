@@ -90,7 +90,7 @@ func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else if errors.Is(err, state.ErrNonPublicAsset) {
 			checkState.state.Status = agent.StatusInconclusive
 		} else {
-			c.Logger.WithError(err).Error("Error running check")
+			logger.WithError(err).Error("Error running check")
 			checkState.state.Status = agent.StatusFailed
 			checkState.state.Report.Error = err.Error()
 		}
