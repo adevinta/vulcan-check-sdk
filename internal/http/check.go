@@ -5,6 +5,7 @@ Copyright 2024 Adevinta
 package http
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -55,7 +56,6 @@ func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"target":  job.Target,
 		"checkID": job.CheckID,
 	})
-	ctx := context.WithValue(r.Context(), "logger", logger)
 	checkState := &State{
 		state: agent.State{
 			Report: report.Report{
@@ -77,38 +77,93 @@ func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ProgressReporter: state.ProgressReporterHandler(checkState.SetProgress),
 	}
 	logger.WithField("opts", job.Options).Info("Starting check")
-	err = c.checker.Run(ctx, job.Target, job.AssetType, job.Options, runtimeState)
-	c.checker.CleanUp(ctx, job.Target, job.AssetType, job.Options)
-	checkState.state.Report.CheckData.EndTime = time.Now()
-	elapsedTime := time.Since(startTime)
-	// If an error has been returned, we set the correct status.
-	if err != nil {
-		if errors.Is(err, context.Canceled) {
-			checkState.state.Status = agent.StatusAborted
-		} else if errors.Is(err, state.ErrAssetUnreachable) {
-			checkState.state.Status = agent.StatusInconclusive
-		} else if errors.Is(err, state.ErrNonPublicAsset) {
-			checkState.state.Status = agent.StatusInconclusive
-		} else {
-			logger.WithError(err).Error("Error running check")
-			checkState.state.Status = agent.StatusFailed
-			checkState.state.Report.Error = err.Error()
-		}
+
+	callbackURI := r.Header.Get("X-Callback-Uri")
+	if callbackURI != "" {
+		logger.WithField("callbackUri", callbackURI).Info("Callback URI received")
+		go func() {
+			ctx := context.WithValue(context.Background(), "logger", logger)
+			// TODO: Define the context to allow aborting the check.
+			err = c.checker.Run(ctx, job.Target, job.AssetType, job.Options, runtimeState)
+			c.checker.CleanUp(ctx, job.Target, job.AssetType, job.Options)
+			checkState.state.Report.CheckData.EndTime = time.Now()
+			elapsedTime := time.Since(startTime)
+			// If an error has been returned, we set the correct status.
+			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					checkState.state.Status = agent.StatusAborted
+				} else if errors.Is(err, state.ErrAssetUnreachable) {
+					checkState.state.Status = agent.StatusInconclusive
+				} else if errors.Is(err, state.ErrNonPublicAsset) {
+					checkState.state.Status = agent.StatusInconclusive
+				} else {
+					logger.WithError(err).Error("Error running check")
+					checkState.state.Status = agent.StatusFailed
+					checkState.state.Report.Error = err.Error()
+				}
+			} else {
+				checkState.state.Status = agent.StatusFinished
+			}
+			checkState.state.Report.Status = checkState.state.Status
+
+			logger.WithFields(log.Fields{"seconds": elapsedTime.Round(time.Millisecond * 100).Seconds(), "state": checkState.state.Status}).Info("Check finished")
+
+			// Initialize sync point for the checker and the push state to be finished.
+			out, err := json.Marshal(checkState.state)
+			if err != nil {
+				logger.WithError(err).Error("error marshalling the check state")
+				http.Error(w, "error marshalling the check state", http.StatusInternalServerError)
+				return
+			}
+			// TODO: Implement retries and backoff. Add Headers with checkId and checkType.
+			resp, err := http.Post(callbackURI, "application/json", bytes.NewBuffer(out))
+			if err != nil {
+				log.Printf("Error sending webhook to %s: %v", callbackURI, err)
+				return
+			}
+			defer resp.Body.Close()
+
+			log.Printf("Webhook sent to %s with result", callbackURI)
+		}()
+		w.WriteHeader(http.StatusAccepted)
+		return
 	} else {
-		checkState.state.Status = agent.StatusFinished
-	}
-	checkState.state.Report.Status = checkState.state.Status
+		ctx := context.WithValue(r.Context(), "logger", logger)
+		logger.Info("No callback URI received")
+		err = c.checker.Run(ctx, job.Target, job.AssetType, job.Options, runtimeState)
+		c.checker.CleanUp(ctx, job.Target, job.AssetType, job.Options)
+		checkState.state.Report.CheckData.EndTime = time.Now()
+		elapsedTime := time.Since(startTime)
+		// If an error has been returned, we set the correct status.
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				checkState.state.Status = agent.StatusAborted
+			} else if errors.Is(err, state.ErrAssetUnreachable) {
+				checkState.state.Status = agent.StatusInconclusive
+			} else if errors.Is(err, state.ErrNonPublicAsset) {
+				checkState.state.Status = agent.StatusInconclusive
+			} else {
+				logger.WithError(err).Error("Error running check")
+				checkState.state.Status = agent.StatusFailed
+				checkState.state.Report.Error = err.Error()
+			}
+		} else {
+			checkState.state.Status = agent.StatusFinished
+		}
+		checkState.state.Report.Status = checkState.state.Status
 
-	logger.WithFields(log.Fields{"seconds": elapsedTime.Round(time.Millisecond * 100).Seconds(), "state": checkState.state.Status}).Info("Check finished")
+		logger.WithFields(log.Fields{"seconds": elapsedTime.Round(time.Millisecond * 100).Seconds(), "state": checkState.state.Status}).Info("Check finished")
 
-	// Initialize sync point for the checker and the push state to be finished.
-	out, err := json.Marshal(checkState.state)
-	if err != nil {
-		logger.WithError(err).Error("error marshalling the check state")
-		http.Error(w, "error marshalling the check state", http.StatusInternalServerError)
+		// Initialize sync point for the checker and the push state to be finished.
+		out, err := json.Marshal(checkState.state)
+		if err != nil {
+			logger.WithError(err).Error("error marshalling the check state")
+			http.Error(w, "error marshalling the check state", http.StatusInternalServerError)
+			return
+		}
+		w.Write(out)
 		return
 	}
-	w.Write(out)
 }
 
 // RunAndServe implements the behavior needed by the sdk for a check runner to
