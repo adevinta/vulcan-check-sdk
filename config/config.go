@@ -92,7 +92,9 @@ func OverrideConfigFromOptions(c *Config) {
 func OverrideConfigFromEnvVars(c *Config) error {
 	overrideConfigLogEnvVars(c)
 	overrideConfigCheckEnvVars(c)
-	overrideCommConfigEnvVars(c)
+	if err := overrideCommConfigEnvVars(c); err != nil {
+		return err
+	}
 	return overrideValidationConfigEnvVars(c)
 }
 
@@ -110,7 +112,7 @@ func overrideValidationConfigEnvVars(c *Config) error {
 	return nil
 }
 
-func overrideCommConfigEnvVars(c *Config) {
+func overrideCommConfigEnvVars(c *Config) error {
 	comMode := os.Getenv(commModeEnv)
 	if comMode != "" {
 		c.CommMode = comMode
@@ -126,8 +128,9 @@ func overrideCommConfigEnvVars(c *Config) {
 
 	port := os.Getenv(httpPort)
 	if port != "" {
-		p, err := strconv.Atoi(port)
-		if err == nil {
+		if p, err := strconv.Atoi(port); err != nil {
+			return fmt.Errorf("invalid port number: %v", port)
+		} else {
 			c.Port = &p
 		}
 	}
@@ -142,6 +145,7 @@ func overrideCommConfigEnvVars(c *Config) {
 	if msgBuffLen != "" {
 		c.Push.BufferLen = int(len)
 	}
+	return nil
 }
 
 func overrideConfigLogEnvVars(c *Config) {
