@@ -132,13 +132,18 @@ func NewCheck(name string, checker Checker) Check {
 		conf.Check.Opts = options
 		c = newLocalCheck(name, checker, logger, conf, json)
 	} else if conf.Port != nil {
-		logger.Debug("Http mode")
-		l := logging.BuildLoggerWithConfigAndFields(conf.Log, log.Fields{
-			// "checkTypeName":    "TODO",
-			// "checkTypeVersion": "TODO",
-			// "component":        "checks",
-		})
-		c = http.NewCheck(name, checker, l, conf)
+		lf := log.Fields{}
+		if conf.Check.CheckTypeName != "" {
+			lf["CheckTypeName"] = conf.Check.CheckTypeName
+		}
+		if conf.Check.CheckTypeVersion != "" {
+			lf["CheckTypeVersion"] = conf.Check.CheckTypeVersion
+		}
+		if conf.VcsRevision != "" {
+			lf["VcsRev"] = conf.VcsRevision
+		}
+		logger = logging.BuildLoggerWithConfigAndFields(conf.Log, lf)
+		c = http.NewCheck(name, checker, logger, conf)
 	} else {
 		logger.Debug("Push mode")
 		c = push.NewCheckWithConfig(name, checker, logger, conf)

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strconv"
 
 	"github.com/BurntSushi/toml"
@@ -68,6 +69,7 @@ type Config struct {
 	Port            *int              `toml:"Port"`
 	AllowPrivateIPs *bool             `toml:"AllowPrivateIps"`
 	RequiredVars    map[string]string `toml:"RequiredVars"`
+	VcsRevision     string            `toml:"VcsRevision"`
 }
 
 type optionsLogConfig struct {
@@ -95,6 +97,7 @@ func OverrideConfigFromEnvVars(c *Config) error {
 	if err := overrideCommConfigEnvVars(c); err != nil {
 		return err
 	}
+	c.VcsRevision = getVcsRevision()
 	return overrideValidationConfigEnvVars(c)
 }
 
@@ -225,4 +228,28 @@ func BuildConfig() (*Config, error) {
 	OverrideConfigFromOptions(c)
 	return c, nil
 	// NOTE: what happens if there no config file and also no env vars setted?
+}
+
+// getVcsRevision gets the buildInfo vcs revision if available.
+func getVcsRevision() string {
+	if x, ok := debug.ReadBuildInfo(); ok {
+		rev := ""
+		mod := ""
+		for _, s := range x.Settings {
+			switch s.Key {
+			case "vcs.revision":
+				if len(s.Value) == 40 { // is the commin hash length
+					rev = s.Value[:8]
+				} else {
+					rev = s.Value
+				}
+			case "vcs.modified":
+				if s.Value == "true" {
+					mod = "*"
+				}
+			}
+		}
+		return rev + mod
+	}
+	return ""
 }
