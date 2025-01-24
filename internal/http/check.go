@@ -157,7 +157,11 @@ func (c *Check) RunAndServe() {
 	}
 
 	c.Logger.Info("Stopping server")
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second) // TODO: Allow configure value.
+	secs := 30
+	if c.config.ShutdownTimeout != nil {
+		secs = *c.config.ShutdownTimeout
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(secs))
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
 		// Some requests were canceled, but the server was shutdown.

@@ -31,7 +31,8 @@ const (
 	pushAgentAddr    = "VULCAN_AGENT_ADDRESS"
 	pushMsgBufferLen = "VULCAN_CHECK_MSG_BUFF_LEN"
 
-	httpPort = "VULCAN_HTTP_PORT"
+	httpPort            = "VULCAN_HTTP_PORT"
+	httpShutdownTimeout = "VULCAN_HTTP_SHUTDOWN_TIMEOUT"
 
 	// Allows scanning private / reserved IP addresses.
 	allowPrivateIPs = "VULCAN_ALLOW_PRIVATE_IPS"
@@ -67,6 +68,8 @@ type Config struct {
 	CommMode        string            `toml:"CommMode"`
 	Push            rest.PusherConfig `toml:"Push"`
 	Port            *int              `toml:"Port"`
+	ShutdownTimeout *int              `toml:"ShutdownTimeout"`
+
 	AllowPrivateIPs *bool             `toml:"AllowPrivateIps"`
 	RequiredVars    map[string]string `toml:"RequiredVars"`
 	VcsRevision     string            `toml:"VcsRevision"`
@@ -129,12 +132,21 @@ func overrideCommConfigEnvVars(c *Config) error {
 		c.Push.AgentAddr = pushEndPoint
 	}
 
-	port := os.Getenv(httpPort)
-	if port != "" {
-		if p, err := strconv.Atoi(port); err != nil {
-			return fmt.Errorf("invalid port number: %v", port)
+	text := os.Getenv(httpPort)
+	if text != "" {
+		if i, err := strconv.Atoi(text); err != nil {
+			return fmt.Errorf("invalid port number: %v", text)
 		} else {
-			c.Port = &p
+			c.Port = &i
+		}
+	}
+
+	text = os.Getenv(httpShutdownTimeout)
+	if text != "" {
+		if i, err := strconv.Atoi(text); err != nil {
+			return fmt.Errorf("invalid shutdownTimeout number: %v", text)
+		} else {
+			c.ShutdownTimeout = &i
 		}
 	}
 
