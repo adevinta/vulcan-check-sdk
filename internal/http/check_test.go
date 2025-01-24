@@ -77,7 +77,11 @@ type httpIntParams struct {
 
 // sleepCheckRunner implements a check that sleeps based on the options and generates inconclusive in case of a target with that name.
 func sleepCheckRunner(ctx context.Context, target, _, optJSON string, st state.State) (err error) {
-	log := logging.BuildRootLog("TestChecker")
+	// Use the implementation of the logger from the check-sdk instead of NewCheckLogFromContext to prevent cycles.
+	log, ok := ctx.Value("logger").(*log.Entry)
+	if !ok {
+		return errors.New("logger not found in context")
+	}
 	log.Debug("Check running")
 	st.SetProgress(0.1)
 	type t struct {
