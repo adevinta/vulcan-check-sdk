@@ -149,6 +149,7 @@ func (c *Check) RunAndServe() {
 	case s := <-c.exitSignal:
 		c.Logger.WithField("signal", s.String()).Info("Signal received")
 	case <-c.shutdownSignal:
+		c.inShutdown.Store(true)
 		c.Logger.Info("Shutdown request received")
 	}
 
