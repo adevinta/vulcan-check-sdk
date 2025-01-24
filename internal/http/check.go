@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -26,14 +27,19 @@ import (
 
 // Check stores all the information needed to run a check locally.
 type Check struct {
-	Logger      *log.Entry
-	Name        string
-	checker     Checker
-	config      *config.Config
-	port        int
-	server      *http.Server
-	exitSignal  chan os.Signal // used to stopt the server either by an os Signal or by calling Shutdown()
-	shuttedDown chan int       // used to wait for the server to shut down.
+	Logger         *log.Entry
+	Name           string
+	checker        Checker
+	config         *config.Config
+	port           int
+	exitSignal     chan os.Signal // used to stopt the server either by an os Signal or by calling Shutdown()
+	shutdownSignal chan bool      // used to signal the server to shutdown.
+	done           chan bool      // used to wait for the server to shut down.
+	inShutdown     atomic.Bool    // used to know if the server is shutting down.
+}
+
+func (c *Check) shutingDown() bool {
+	return c.inShutdown.Load()
 }
 
 // ServeHTTP implements an HTTP POST handler that receives a JSON encoded job, and returns an
@@ -114,38 +120,45 @@ func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // RunAndServe implements the behavior needed by the sdk for a check runner to
 // execute a check.
 func (c *Check) RunAndServe() {
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		if c.shuttedDown == nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`"OK"`))
-		} else {
-			// the server is shutting down
+	mux := http.ServeMux{}
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		if c.shutingDown() {
 			http.Error(w, "shuttingDown", http.StatusServiceUnavailable)
+			return
 		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`"OK"`))
 	})
-	http.HandleFunc("/run", c.ServeHTTP)
-	c.Logger.Info(fmt.Sprintf("Listening at %s", c.server.Addr))
+	mux.HandleFunc("/run", c.ServeHTTP)
+
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%d", c.port),
+		Handler: &mux,
+	}
+
+	c.Logger.Info(fmt.Sprintf("Listening at %s", server.Addr))
 	go func() {
-		if err := c.server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			c.Logger.WithError(err).Error("Starting http server")
 		}
 		c.Logger.Info("Stopped serving new connections.")
-		if c.shuttedDown != nil {
-			c.Logger.Info("Notifying shuttedDown")
-			c.shuttedDown <- 1
-			c.Logger.Info("Notified shuttedDown")
-		}
+		c.done <- true
 	}()
 
-	s := <-c.exitSignal
+	select {
+	case s := <-c.exitSignal:
+		c.Logger.WithField("signal", s.String()).Info("Signal received")
+	case <-c.shutdownSignal:
+		c.Logger.Info("Shutdown request received")
+	}
 
-	c.Logger.WithField("signal", s.String()).Info("Stopping server")
+	c.Logger.Info("Stopping server")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second) // TODO: Allow configure value.
 	defer cancel()
-	if err := c.server.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(ctx); err != nil {
 		c.Logger.WithError(err).Error("Shutting down server")
 	}
-	c.Logger.Info("Finished RunAndServe.")
+	c.Logger.Info("Finished RunAndServe")
 }
 
 type Job struct {
@@ -164,13 +177,16 @@ type Job struct {
 // Shutdown is needed to fulfil the check interface and in this case we are
 // shutting down the http server and waiting
 func (c *Check) Shutdown() error {
-	// Send the exit signal to shutdown the server.
-	c.exitSignal <- syscall.SIGTERM
+	if c.shutingDown() {
+		return nil
+	}
+	c.inShutdown.Store(true)
 
-	c.shuttedDown = make(chan int)
+	// Send the exit signal to shutdown the server.
+	c.shutdownSignal <- true
 	// Wait for the server to shutdown.
 	c.Logger.Info("Shutdown: waiting for shuttedDown")
-	<-c.shuttedDown
+	<-c.done
 	c.Logger.Info("Shutdown:shutted down")
 	return nil
 }
@@ -178,14 +194,14 @@ func (c *Check) Shutdown() error {
 // NewCheck creates new check to be run from the command line without having an agent.
 func NewCheck(name string, checker Checker, logger *log.Entry, conf *config.Config) *Check {
 	c := &Check{
-		Name:        name,
-		Logger:      logger,
-		config:      conf,
-		exitSignal:  make(chan os.Signal, 1),
-		port:        *conf.Port,
-		shuttedDown: nil,
+		Name:           name,
+		Logger:         logger,
+		config:         conf,
+		exitSignal:     make(chan os.Signal, 1),
+		shutdownSignal: make(chan bool),
+		port:           *conf.Port,
+		done:           make(chan bool),
 	}
-	c.server = &http.Server{Addr: fmt.Sprintf(":%d", c.port)}
 	signal.Notify(c.exitSignal, syscall.SIGINT, syscall.SIGTERM)
 	c.checker = checker
 	return c
