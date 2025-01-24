@@ -34,7 +34,7 @@ type Check struct {
 	port           int
 	exitSignal     chan os.Signal // used to stopt the server either by an os Signal or by calling Shutdown()
 	shutdownSignal chan bool      // used to signal the server to shutdown.
-	done           chan bool      // used to wait for the server to shut down.
+	finished       chan error     // used to wait for the server to shutted down.
 	inShutdown     atomic.Bool    // used to know if the server is shutting down.
 }
 
@@ -139,13 +139,16 @@ func (c *Check) RunAndServe() {
 	c.Logger.Info(fmt.Sprintf("Listening at %s", server.Addr))
 	go func() {
 		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			c.Logger.WithError(err).Error("Starting http server")
+			c.finished <- err
+		} else {
+			c.finished <- nil
 		}
-		c.Logger.Info("Stopped serving new connections.")
-		c.done <- true
 	}()
 
 	select {
+	case err := <-c.finished:
+		c.Logger.WithError(err).Error("ListenAndServe: Unable to start server")
+		return // No need to shutdow the server because it was not started.
 	case s := <-c.exitSignal:
 		c.Logger.WithField("signal", s.String()).Info("Signal received")
 	case <-c.shutdownSignal:
@@ -157,7 +160,8 @@ func (c *Check) RunAndServe() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second) // TODO: Allow configure value.
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
-		c.Logger.WithError(err).Error("Shutting down server")
+		// Some requests were canceled, but the server was shutdown.
+		c.Logger.WithError(err).Warn("Shutting down server")
 	}
 	c.Logger.Info("Finished RunAndServe")
 }
@@ -185,11 +189,9 @@ func (c *Check) Shutdown() error {
 
 	// Send the exit signal to shutdown the server.
 	c.shutdownSignal <- true
-	// Wait for the server to shutdown.
+
 	c.Logger.Info("Shutdown: waiting for shuttedDown")
-	<-c.done
-	c.Logger.Info("Shutdown:shutted down")
-	return nil
+	return <-c.finished
 }
 
 // NewCheck creates new check to be run from the command line without having an agent.
@@ -201,7 +203,7 @@ func NewCheck(name string, checker Checker, logger *log.Entry, conf *config.Conf
 		exitSignal:     make(chan os.Signal, 1),
 		shutdownSignal: make(chan bool),
 		port:           *conf.Port,
-		done:           make(chan bool),
+		finished:       make(chan error),
 	}
 	signal.Notify(c.exitSignal, syscall.SIGINT, syscall.SIGTERM)
 	c.checker = checker
