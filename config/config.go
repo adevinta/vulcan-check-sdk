@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime/debug"
 	"strconv"
 
@@ -100,7 +101,6 @@ func OverrideConfigFromEnvVars(c *Config) error {
 	if err := overrideCommConfigEnvVars(c); err != nil {
 		return err
 	}
-	c.VcsRevision = getVcsRevision()
 	return overrideValidationConfigEnvVars(c)
 }
 
@@ -233,6 +233,7 @@ func BuildConfig() (*Config, error) {
 		}
 		c = fileConf
 	}
+	c.VcsRevision = getVcsRevision()
 	if err := OverrideConfigFromEnvVars(c); err != nil {
 		return nil, err
 	}
@@ -244,24 +245,27 @@ func BuildConfig() (*Config, error) {
 
 // getVcsRevision gets the buildInfo vcs revision if available.
 func getVcsRevision() string {
-	if x, ok := debug.ReadBuildInfo(); ok {
-		rev := ""
-		mod := ""
-		for _, s := range x.Settings {
-			switch s.Key {
-			case "vcs.revision":
-				if len(s.Value) == 40 { // is the commin hash length
-					rev = s.Value[:8]
-				} else {
-					rev = s.Value
-				}
-			case "vcs.modified":
-				if s.Value == "true" {
-					mod = "*"
-				}
+	buildInfo, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+
+	rev := ""
+	mod := ""
+	for _, s := range buildInfo.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			// Shorten the revision to 8 characters.
+			if regexp.MustCompile(`[0-9a-f]{40}`).MatchString(s.Value) {
+				rev = s.Value[:7]
+			} else {
+				rev = s.Value
+			}
+		case "vcs.modified":
+			if s.Value == "true" {
+				mod = "*"
 			}
 		}
-		return rev + mod
 	}
-	return ""
+	return rev + mod
 }
