@@ -122,10 +122,6 @@ func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (c *Check) RunAndServe() {
 	mux := http.ServeMux{}
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		if c.shutingDown() {
-			http.Error(w, "shuttingDown", http.StatusServiceUnavailable)
-			return
-		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`"OK"`))
 	})
