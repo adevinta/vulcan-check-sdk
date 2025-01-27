@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -35,16 +34,12 @@ type Check struct {
 	exitSignal     chan os.Signal // used to stopt the server either by an os Signal or by calling Shutdown()
 	shutdownSignal chan bool      // used to signal the server to shutdown.
 	finished       chan error     // used to wait for the server to shutted down.
-	inShutdown     atomic.Bool    // used to know if the server is shutting down.
+	inShutdown     bool           // used to know if the server is shutting down.
 }
 
-func (c *Check) shutingDown() bool {
-	return c.inShutdown.Load()
-}
-
-// ServeHTTP implements an HTTP POST handler that receives a JSON encoded job, and returns an
+// ProcessRunRequest implements an HTTP POST handler that receives a JSON encoded job, and returns an
 // agent.State JSON encoded response.
-func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (c *Check) ProcessRunRequest(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -120,16 +115,16 @@ func (c *Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // RunAndServe implements the behavior needed by the sdk for a check runner to
 // execute a check.
 func (c *Check) RunAndServe() {
-	mux := http.ServeMux{}
+	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`"OK"`))
 	})
-	mux.HandleFunc("/run", c.ServeHTTP)
+	mux.HandleFunc("/run", c.ProcessRunRequest)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", c.port),
-		Handler: &mux,
+		Handler: mux,
 	}
 
 	c.Logger.Info(fmt.Sprintf("Listening at %s", server.Addr))
@@ -148,7 +143,7 @@ func (c *Check) RunAndServe() {
 	case s := <-c.exitSignal:
 		c.Logger.WithField("signal", s.String()).Info("Signal received")
 	case <-c.shutdownSignal:
-		c.inShutdown.Store(true)
+		c.inShutdown = true
 		c.Logger.Info("Shutdown request received")
 	}
 
@@ -182,15 +177,15 @@ type Job struct {
 // Shutdown is needed to fulfil the check interface and in this case we are
 // shutting down the http server and waiting
 func (c *Check) Shutdown() error {
-	if c.shutingDown() {
+	if c.inShutdown {
 		return nil
 	}
-	c.inShutdown.Store(true)
+	c.inShutdown = true
 
 	// Send the exit signal to shutdown the server.
 	c.shutdownSignal <- true
 
-	c.Logger.Info("Shutdown: waiting for shuttedDown")
+	c.Logger.Info("Shutdown: waiting for server shutdown")
 	return <-c.finished
 }
 
