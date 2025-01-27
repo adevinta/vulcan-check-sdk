@@ -20,5 +20,7 @@ jobs:
 
       - name: Go test
         run: |
-          go test ./internal/http/... -count=1 -race
-          go test -v -count 1 ./...
+          go test -cover -count 1 ./...
+
+          # TODO: Fix the race conditions outside internal/http
+          go test -count=1 -race ./internal/http/...
