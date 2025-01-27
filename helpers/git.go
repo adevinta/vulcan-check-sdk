@@ -22,12 +22,12 @@ const (
 
 // CloneGitRepository executes CloneGitRepositoryContext with background context.
 func CloneGitRepository(target string, branch string, depth int) (string, string, error) {
-	return CloneGitRepositoryWithContext(context.Background(), target, branch, depth)
+	return CloneGitRepositoryContext(context.Background(), target, branch, depth)
 }
 
 // CloneGitRepositoryContext clones a Git repository into a temporary directory and returns the path and branch name.
 // If a branch is not specified, the default branch will be used and its name will be returned.
-func CloneGitRepositoryWithContext(ctx context.Context, target string, branch string, depth int) (string, string, error) {
+func CloneGitRepositoryContext(ctx context.Context, target string, branch string, depth int) (string, string, error) {
 	// Check if the target repository is on Github Enterprise and return populated credentials if necessary.
 	auth, err := gheAuth(target)
 	if err != nil {
