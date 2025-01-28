@@ -105,13 +105,13 @@ func sleepCheckRunner(ctx context.Context, target, _, optJSON string, st state.S
 	select {
 	case <-time.After(time.Duration(opt.SleepTime) * time.Second):
 		log.Debugf("slept successfully %s seconds", strconv.Itoa(opt.SleepTime))
+		st.AddVulnerabilities(report.Vulnerability{
+			Summary:     "Summary",
+			Description: "Test Vulnerability",
+		})
 	case <-ctx.Done():
 		log.Info("Check aborted")
 	}
-	st.AddVulnerabilities(report.Vulnerability{
-		Summary:     "Summary",
-		Description: "Test Vulnerability",
-	})
 	return nil
 }
 
@@ -143,23 +143,30 @@ func TestIntegrationHttpMode(t *testing.T) {
 						Target:    "www.example.com",
 						AssetType: "Hostname",
 					},
-					"checkDeadline": {
-						CheckID:   "checkDeadline",
-						Options:   `{"SleepTime": 10}`,
-						Target:    "www.example.com",
-						AssetType: "Hostname",
-					},
-					"checkInconclusive": {
+					"checkInconclusive": { // The check will always return an Inconclusive status for that tharget
 						CheckID:   "checkInconclusive",
 						Options:   `{"SleepTime": 1}`,
 						Target:    "inconclusive",
 						AssetType: "Hostname",
 					},
-					"checkFailed": {
+					"checkFailed": { // The check will always fail because the sleep time is missing
 						CheckID:   "checkFailed",
 						Options:   `{}`,
 						Target:    "www.example.com",
 						AssetType: "Hostname",
+					},
+					"checkClientTimeout": { // The http request will be aborted by the client as it exceeds the requestTimeout
+						CheckID:   "checkClientTimeout",
+						Options:   `{"SleepTime": 10}`,
+						Target:    "www.example.com",
+						AssetType: "Hostname",
+					},
+					"checkSdkTimeout": { // The check will be aborted by the server sdk as it exceeds the specified timeout
+						CheckID:   "checkSdkTimeout",
+						Options:   `{"SleepTime": 2}`,
+						Target:    "www.example.com",
+						AssetType: "Hostname",
+						Timeout:   1,
 					},
 				},
 				resourceToClean: map[string]string{"key": "initial"},
@@ -189,9 +196,21 @@ func TestIntegrationHttpMode(t *testing.T) {
 							Notes: "",
 						},
 					}},
-				"checkDeadline": {
+				"checkClientTimeout": {
 					Status: agent.StatusAborted,
 				},
+				"checkSdkTimeout": {
+					Status: agent.StatusAborted,
+					Report: report.Report{
+						CheckData: report.CheckData{
+							CheckID:          "checkSdkTimeout",
+							ChecktypeName:    "checkTypeName",
+							ChecktypeVersion: "",
+							Target:           "www.example.com",
+							Options:          `{"SleepTime": 2}`,
+							Status:           agent.StatusAborted,
+						},
+					}},
 				"checkInconclusive": {
 					Status: agent.StatusInconclusive,
 					Report: report.Report{

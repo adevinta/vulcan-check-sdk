@@ -36,19 +36,36 @@ type Check struct {
 	finished       chan error     // used to wait for the server to shutted down.
 }
 
-// ProcessRunRequest implements an HTTP POST handler that receives a JSON encoded job, and returns an
+type Job struct {
+	CheckID      string            `json:"check_id"`      // Required
+	StartTime    time.Time         `json:"start_time"`    // Required
+	Image        string            `json:"image"`         // Required
+	Target       string            `json:"target"`        // Required
+	Timeout      int               `json:"timeout"`       // Required
+	AssetType    string            `json:"assettype"`     // Optional
+	Options      string            `json:"options"`       // Optional
+	RequiredVars []string          `json:"required_vars"` // Optional
+	Metadata     map[string]string `json:"metadata"`      // Optional
+}
+
+// handleRun implements an HTTP POST handler that receives a JSON encoded job, and returns an
 // agent.State JSON encoded response.
-func (c *Check) ProcessRunRequest(w http.ResponseWriter, r *http.Request) {
+func (c *Check) handleRun(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "error reading request body", http.StatusBadRequest)
 		return
 	}
+
 	var job Job
 	if err = json.Unmarshal(body, &job); err != nil {
 		w.WriteHeader(500)
 		return
+	}
+
+	if job.StartTime.IsZero() {
+		job.StartTime = time.Now()
 	}
 
 	logger := c.Logger.WithFields(log.Fields{
@@ -61,7 +78,7 @@ func (c *Check) ProcessRunRequest(w http.ResponseWriter, r *http.Request) {
 			Report: report.Report{
 				CheckData: report.CheckData{
 					CheckID:          job.CheckID,
-					StartTime:        job.StartTime, // TODO: Is this correct or should be time.Now()
+					StartTime:        job.StartTime,
 					ChecktypeName:    c.config.Check.CheckTypeName,
 					ChecktypeVersion: c.config.Check.CheckTypeVersion,
 					Options:          job.Options,
@@ -72,25 +89,43 @@ func (c *Check) ProcessRunRequest(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
+	var cancel context.CancelFunc
+	if job.Timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(job.Timeout)*time.Second)
+		defer cancel()
+	}
+
 	runtimeState := state.State{
 		ResultData:       &checkState.state.Report.ResultData,
 		ProgressReporter: state.ProgressReporterHandler(checkState.SetProgress),
 	}
 	logger.WithField("opts", job.Options).Info("Starting check")
+
 	err = c.checker.Run(ctx, job.Target, job.AssetType, job.Options, runtimeState)
 	c.checker.CleanUp(ctx, job.Target, job.AssetType, job.Options)
+
+	// This allows to capture if the context was canceled (i.e. by the http request) or job.Timeout was reached.
+	select {
+	case <-ctx.Done():
+		err = ctx.Err()
+	default:
+	}
+
 	checkState.state.Report.CheckData.EndTime = time.Now()
 	elapsedTime := time.Since(startTime)
-	// If an error has been returned, we set the correct status.
+	logger.WithField("elapsedTime", elapsedTime).Info("Check finished")
+
 	if err != nil {
-		if errors.Is(err, context.Canceled) {
+		logger.WithError(err).Error("Error running check")
+		if errors.Is(err, context.DeadlineExceeded) {
+			checkState.state.Status = agent.StatusAborted
+		} else if errors.Is(err, context.Canceled) {
 			checkState.state.Status = agent.StatusAborted
 		} else if errors.Is(err, state.ErrAssetUnreachable) {
 			checkState.state.Status = agent.StatusInconclusive
 		} else if errors.Is(err, state.ErrNonPublicAsset) {
 			checkState.state.Status = agent.StatusInconclusive
 		} else {
-			logger.WithError(err).Error("Error running check")
 			checkState.state.Status = agent.StatusFailed
 			checkState.state.Report.Error = err.Error()
 		}
@@ -111,15 +146,18 @@ func (c *Check) ProcessRunRequest(w http.ResponseWriter, r *http.Request) {
 	w.Write(out)
 }
 
+// handleHealth implements an HTTP GET handler that returns a simple "OK" response.
+func (c *Check) handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`"OK"`))
+}
+
 // RunAndServe implements the behavior needed by the sdk for a check runner to
 // execute a check.
 func (c *Check) RunAndServe() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`"OK"`))
-	})
-	mux.HandleFunc("/run", c.ProcessRunRequest)
+	mux.HandleFunc("/healthz", c.handleHealth)
+	mux.HandleFunc("/run", c.handleRun)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", c.port),
@@ -127,16 +165,17 @@ func (c *Check) RunAndServe() {
 	}
 
 	c.Logger.Info(fmt.Sprintf("Listening at %s", server.Addr))
+	chanErr := make(chan error)
 	go func() {
 		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			c.finished <- err
+			chanErr <- err
 		} else {
 			c.finished <- nil
 		}
 	}()
 
 	select {
-	case err := <-c.finished:
+	case err := <-chanErr:
 		c.Logger.WithError(err).Error("ListenAndServe: Unable to start server")
 		return // No need to shutdow the server because it was not started.
 	case s := <-c.exitSignal:
@@ -157,19 +196,6 @@ func (c *Check) RunAndServe() {
 		c.Logger.WithError(err).Warn("Shutting down server")
 	}
 	c.Logger.Info("Finished RunAndServe")
-}
-
-type Job struct {
-	CheckID      string            `json:"check_id"`      // Required
-	StartTime    time.Time         `json:"start_time"`    // Required
-	Image        string            `json:"image"`         // Required
-	Target       string            `json:"target"`        // Required
-	Timeout      int               `json:"timeout"`       // Required
-	AssetType    string            `json:"assettype"`     // Optional
-	Options      string            `json:"options"`       // Optional
-	RequiredVars []string          `json:"required_vars"` // Optional
-	Metadata     map[string]string `json:"metadata"`      // Optional
-	RunTime      int64
 }
 
 // Shutdown is needed to fulfil the check interface and in this case we are
