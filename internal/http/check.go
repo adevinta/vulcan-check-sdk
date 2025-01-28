@@ -34,7 +34,6 @@ type Check struct {
 	exitSignal     chan os.Signal // used to stopt the server either by an os Signal or by calling Shutdown()
 	shutdownSignal chan bool      // used to signal the server to shutdown.
 	finished       chan error     // used to wait for the server to shutted down.
-	inShutdown     bool           // used to know if the server is shutting down.
 }
 
 // ProcessRunRequest implements an HTTP POST handler that receives a JSON encoded job, and returns an
@@ -143,7 +142,6 @@ func (c *Check) RunAndServe() {
 	case s := <-c.exitSignal:
 		c.Logger.WithField("signal", s.String()).Info("Signal received")
 	case <-c.shutdownSignal:
-		c.inShutdown = true
 		c.Logger.Info("Shutdown request received")
 	}
 
@@ -177,11 +175,6 @@ type Job struct {
 // Shutdown is needed to fulfil the check interface and in this case we are
 // shutting down the http server and waiting
 func (c *Check) Shutdown() error {
-	if c.inShutdown {
-		return nil
-	}
-	c.inShutdown = true
-
 	// Send the exit signal to shutdown the server.
 	c.shutdownSignal <- true
 
