@@ -134,13 +134,13 @@ func NewCheck(name string, checker Checker) Check {
 	} else if conf.Port != nil {
 		lf := log.Fields{}
 		if conf.Check.CheckTypeName != "" {
-			lf["CheckTypeName"] = conf.Check.CheckTypeName
+			lf["checkTypeName"] = conf.Check.CheckTypeName
 		}
 		if conf.Check.CheckTypeVersion != "" {
-			lf["CheckTypeVersion"] = conf.Check.CheckTypeVersion
+			lf["checkTypeVersion"] = conf.Check.CheckTypeVersion
 		}
 		if conf.VcsRevision != "" {
-			lf["VcsRev"] = conf.VcsRevision
+			lf["vcsRev"] = conf.VcsRevision
 		}
 		logger = logging.BuildLoggerWithConfigAndFields(conf.Log, lf)
 		c = http.NewCheck(name, checker, logger, conf)
