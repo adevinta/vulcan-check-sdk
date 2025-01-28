@@ -250,7 +250,11 @@ func TestIntegrationHttpMode(t *testing.T) {
 			conf := tt.args.config
 			l := logging.BuildRootLog("httpCheck")
 			c := NewCheckFromHandlerWithConfig(tt.args.checkName, tt.args.checkRunner, nil, conf, l)
-			go c.RunAndServe()
+			chDone := make(chan struct{})
+			go func() {
+				c.RunAndServe()
+				chDone <- struct{}{}
+			}()
 			client := &http.Client{}
 			url := fmt.Sprintf("http://localhost:%d/run", *tt.args.config.Port)
 
@@ -289,7 +293,7 @@ func TestIntegrationHttpMode(t *testing.T) {
 			}
 			// Do not wait more
 			if i == 0 {
-				t.Error("Unable to start the server")
+				t.Fatal("Unable to start the server")
 			}
 
 			// ch will receive the results of the concurrent job executions
@@ -348,7 +352,13 @@ func TestIntegrationHttpMode(t *testing.T) {
 			}
 			wg.Wait()
 			close(ch)
-			c.Shutdown()
+
+			if err := c.Shutdown(); err != nil {
+				t.Errorf("Error shutting down server: %v", err)
+			}
+
+			<-chDone
+			goleak.VerifyNone(t)
 
 			results := map[string]agent.State{}
 			for x := range ch {
@@ -368,9 +378,6 @@ func TestIntegrationHttpMode(t *testing.T) {
 				t.Errorf("Error in test %s. diffs %+v", tt.name, diff)
 			}
 
-			l.Info("waiting for go routines to tidy-up before goleak test ....")
-			time.Sleep(5 * time.Second)
-			goleak.VerifyNone(t)
 		})
 	}
 }
