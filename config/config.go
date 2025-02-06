@@ -243,6 +243,8 @@ func BuildConfig() (*Config, error) {
 	// NOTE: what happens if there no config file and also no env vars setted?
 }
 
+var reVcsRef = regexp.MustCompile(`[0-9a-f]{40}`)
+
 // getVcsRevision gets the buildInfo vcs revision if available.
 func getVcsRevision() string {
 	buildInfo, ok := debug.ReadBuildInfo()
@@ -256,7 +258,7 @@ func getVcsRevision() string {
 		switch s.Key {
 		case "vcs.revision":
 			// Shorten the revision to 8 characters.
-			if regexp.MustCompile(`[0-9a-f]{40}`).MatchString(s.Value) {
+			if reVcsRef.MatchString(s.Value) {
 				rev = s.Value[:7]
 			} else {
 				rev = s.Value
