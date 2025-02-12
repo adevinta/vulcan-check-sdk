@@ -60,7 +60,7 @@ func (p *State) SetProgress(progress float32) {
 func (p *State) SetStatusRunning() {
 	p.state.Status = agent.StatusRunning
 	p.state.Progress = 0.0
-	p.state.Report.Status = string(agent.StatusRunning)
+	p.state.Report.Status = agent.StatusRunning
 	p.pusher.UpdateState(p.state)
 }
 

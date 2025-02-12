@@ -14,6 +14,7 @@ import (
 
 	"github.com/adevinta/vulcan-check-sdk/agent"
 	"github.com/adevinta/vulcan-check-sdk/config"
+	"github.com/adevinta/vulcan-check-sdk/internal/http"
 	"github.com/adevinta/vulcan-check-sdk/internal/local"
 	"github.com/adevinta/vulcan-check-sdk/internal/logging"
 	"github.com/adevinta/vulcan-check-sdk/internal/push"
@@ -130,10 +131,24 @@ func NewCheck(name string, checker Checker) Check {
 		conf.Check.Target = runTarget
 		conf.Check.Opts = options
 		c = newLocalCheck(name, checker, logger, conf, json)
+	} else if conf.Port != nil {
+		lf := log.Fields{}
+		if conf.Check.CheckTypeName != "" {
+			lf["checkTypeName"] = conf.Check.CheckTypeName
+		}
+		if conf.Check.CheckTypeVersion != "" {
+			lf["checkTypeVersion"] = conf.Check.CheckTypeVersion
+		}
+		if conf.VcsRevision != "" {
+			lf["vcsRev"] = conf.VcsRevision
+		}
+		logger = logging.BuildLoggerWithConfigAndFields(conf.Log, lf)
+		c = http.NewCheck(name, checker, logger, conf)
 	} else {
 		logger.Debug("Push mode")
 		c = push.NewCheckWithConfig(name, checker, logger, conf)
 	}
+
 	cachedConfig = conf
 	return c
 }
@@ -147,6 +162,14 @@ func NewCheckLog(name string) *log.Entry {
 		l = logging.BuildRootLogWithConfig(name, cachedConfig)
 	}
 	return (l)
+}
+
+// NewCheckLogFromContext retrieves the logger from the context or creates a new one.
+func NewCheckLogFromContext(ctx context.Context, name string) *log.Entry {
+	if l, ok := ctx.Value("logger").(*log.Entry); ok {
+		return l
+	}
+	return NewCheckLog(name)
 }
 
 // NewCheckFromHandlerWithConfig creates a new check from run and abort handlers using provided config.

@@ -1,0 +1,26 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '>=1.23'
+
+      - name: Install tests deps
+        run: sudo apt install nmap -y
+
+      - name: Go test
+        run: |
+          go test -cover -count 1 ./...
+
+          # TODO: Fix the race conditions outside internal/http
+          go test -count=1 -race ./internal/http/...

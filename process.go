@@ -58,6 +58,11 @@ type ProcessCheck struct {
 
 // Run starts the execution of the process.
 func (p *ProcessCheck) Run(ctx context.Context) (pState *os.ProcessState, err error) {
+	// In case a logger is in the context we override the default logger.
+	if l, ok := ctx.Value("logger").(*log.Entry); ok {
+		p.logger = l
+	}
+
 	childCtx, cancel := context.WithCancel(ctx)
 	p.cancel = cancel
 	p.logger.WithFields(log.Fields{"process_exec": p.executable, "process_params": p.args}).Info("Running process")

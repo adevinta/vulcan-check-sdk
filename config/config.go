@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
+	"runtime/debug"
 	"strconv"
 
 	"github.com/BurntSushi/toml"
@@ -29,6 +31,9 @@ const (
 	commModeEnv      = "VULCAN_CHECK_COMM_MODE"
 	pushAgentAddr    = "VULCAN_AGENT_ADDRESS"
 	pushMsgBufferLen = "VULCAN_CHECK_MSG_BUFF_LEN"
+
+	httpPort            = "VULCAN_HTTP_PORT"
+	httpShutdownTimeout = "VULCAN_HTTP_SHUTDOWN_TIMEOUT"
 
 	// Allows scanning private / reserved IP addresses.
 	allowPrivateIPs = "VULCAN_ALLOW_PRIVATE_IPS"
@@ -63,8 +68,12 @@ type Config struct {
 	Log             LogConfig         `toml:"Log"`
 	CommMode        string            `toml:"CommMode"`
 	Push            rest.PusherConfig `toml:"Push"`
+	Port            *int              `toml:"Port"`
+	ShutdownTimeout *int              `toml:"ShutdownTimeout"`
+
 	AllowPrivateIPs *bool             `toml:"AllowPrivateIps"`
 	RequiredVars    map[string]string `toml:"RequiredVars"`
+	VcsRevision     string            `toml:"VcsRevision"`
 }
 
 type optionsLogConfig struct {
@@ -89,7 +98,9 @@ func OverrideConfigFromOptions(c *Config) {
 func OverrideConfigFromEnvVars(c *Config) error {
 	overrideConfigLogEnvVars(c)
 	overrideConfigCheckEnvVars(c)
-	overrideCommConfigEnvVars(c)
+	if err := overrideCommConfigEnvVars(c); err != nil {
+		return err
+	}
 	return overrideValidationConfigEnvVars(c)
 }
 
@@ -107,7 +118,7 @@ func overrideValidationConfigEnvVars(c *Config) error {
 	return nil
 }
 
-func overrideCommConfigEnvVars(c *Config) {
+func overrideCommConfigEnvVars(c *Config) error {
 	comMode := os.Getenv(commModeEnv)
 	if comMode != "" {
 		c.CommMode = comMode
@@ -121,6 +132,24 @@ func overrideCommConfigEnvVars(c *Config) {
 		c.Push.AgentAddr = pushEndPoint
 	}
 
+	text := os.Getenv(httpPort)
+	if text != "" {
+		if i, err := strconv.Atoi(text); err != nil {
+			return fmt.Errorf("invalid port number: %v", text)
+		} else {
+			c.Port = &i
+		}
+	}
+
+	text = os.Getenv(httpShutdownTimeout)
+	if text != "" {
+		if i, err := strconv.Atoi(text); err != nil {
+			return fmt.Errorf("invalid shutdownTimeout number: %v", text)
+		} else {
+			c.ShutdownTimeout = &i
+		}
+	}
+
 	msgBuffLen := os.Getenv(pushMsgBufferLen)
 	len, err := strconv.ParseInt(msgBuffLen, 0, 32)
 	if err != nil {
@@ -131,6 +160,7 @@ func overrideCommConfigEnvVars(c *Config) {
 	if msgBuffLen != "" {
 		c.Push.BufferLen = int(len)
 	}
+	return nil
 }
 
 func overrideConfigLogEnvVars(c *Config) {
@@ -203,6 +233,7 @@ func BuildConfig() (*Config, error) {
 		}
 		c = fileConf
 	}
+	c.VcsRevision = getVcsRevision()
 	if err := OverrideConfigFromEnvVars(c); err != nil {
 		return nil, err
 	}
@@ -210,4 +241,33 @@ func BuildConfig() (*Config, error) {
 	OverrideConfigFromOptions(c)
 	return c, nil
 	// NOTE: what happens if there no config file and also no env vars setted?
+}
+
+var reVcsRef = regexp.MustCompile(`[0-9a-f]{40}`)
+
+// getVcsRevision gets the buildInfo vcs revision if available.
+func getVcsRevision() string {
+	buildInfo, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+
+	rev := ""
+	mod := ""
+	for _, s := range buildInfo.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			// Shorten the revision to 8 characters.
+			if reVcsRef.MatchString(s.Value) {
+				rev = s.Value[:7]
+			} else {
+				rev = s.Value
+			}
+		case "vcs.modified":
+			if s.Value == "true" {
+				mod = "*"
+			}
+		}
+	}
+	return rev + mod
 }
